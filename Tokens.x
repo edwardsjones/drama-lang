@@ -18,6 +18,7 @@ tokens :-
     done                            { \s -> Done }
     let                             { \s -> Let }
     in                              { \s -> In }
+    self                            { \s -> Self }
     $digit+                         { \s -> Int (read s) }
     \=                              { \s -> Equals } 
     $alpha [$alpha $digit \_ \']*   { \s -> Identifier s }
@@ -38,6 +39,7 @@ data Token =
     Done                |
     Let                 |
     In                  |
+    Self                |
     Int Int             | 
     Equals              |
     Identifier String   |

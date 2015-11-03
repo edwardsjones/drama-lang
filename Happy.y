@@ -15,6 +15,7 @@ import Tokens
     done        { Done }
     let         { Let }
     in          { In }
+    self        { Self }
     int         { Int $$ }
     identifier  { Identifier $$ }
     '='         { Equals }
@@ -30,41 +31,42 @@ import Tokens
 %left '='
 %%
 
-Program         : BehaviourList Instantiation       {}
+Program         : BehaviourList Instantiation               {}
 
-BehaviourList   : Behaviour                         { [$1] }
-                | BehaviourList Behaviour           { $2 : $1 }
+BehaviourList   : Behaviour                                 { [$1] }
+                | BehaviourList Behaviour                   { $2 : $1 }
 
 Behaviour       : behaviour identifier '(' FormalParams ')'
-                  '{' Exp Receive '}'               { Behaviour $2 $4 $7 $8 }
+                  '{' Exp Receive '}'                       { Behaviour $2 $4 $7 $8 }
 
-Receive         : receive Handling done             { $2 }
+Receive         : receive Handling done                     { $2 }
 
-Handling        : '(' Msg ')' '->' Exp              { [(Receive $2 $5)] }
-                | Handling '(' Msg ')' '->' Exp     { (Receive $3 $6) : $1 }
+Handling        : '(' Msg ')' '->' Exp                      { [(Receive $2 $5)] }
+                | Handling '(' Msg ')' '->' Exp             { (Receive $3 $6) : $1 }
 
-Msg             : {-- empty --}                     { [] }
-                | identifier                        { [$1] }
-                | Msg ',' identifier                { $3 : $1 }
+Msg             : {-- empty --}                             { [] }
+                | identifier                                { [$1] }
+                | Msg ',' identifier                        { $3 : $1 }
 
-Exp             : '(' ')'                           { UnitE }
-                | identifier                        { VarE $1 }
-                | int                               { NumberE $1 }
-                | send identifier '(' Msg ')'       { SendE $2 $4 }
-                | let identifier '=' Exp in Exp     { LetE $2 $4 $6 }
-                | create identifier '(' ActualParams ')'   { CreateE $2 $4 }
+Exp             : '(' ')'                                   { UnitE }
+                | self                                      { SelfE }
+                | identifier                                { VarE $1 }
+                | int                                       { NumberE $1 }
+                | send identifier '(' Msg ')'               { SendE $2 $4 }
+                | let identifier '=' Exp in Exp             { LetE $2 $4 $6 }
+                | create identifier '(' ActualParams ')'    { CreateE $2 $4 }
 
-Instantiation   : create identifier '(' ActualParams ')'   { Instantiation $2 $4 }
+Instantiation   : create identifier '(' ActualParams ')'    { Instantiation $2 $4 }
 
-FormalParams    : {-- empty --}                     { [] }
-                | FormalParams FormalParam          { $2 : $1 }
+FormalParams    : {-- empty --}                             { [] }
+                | FormalParams FormalParam                  { $2 : $1 }
 
-ActualParams    : {-- empty --}                     { [] }
-                | ActualParams ActualParam          { $2 : $1 }
+ActualParams    : {-- empty --}                             { [] }
+                | ActualParams ActualParam                  { $2 : $1 }
 
-FormalParam     : identifier                        { Name $1 }
+FormalParam     : identifier                                { Name $1 }
 
-ActualParam     : Exp                               { $1 }
+ActualParam     : Exp                                       { $1 }
 
 {
 
@@ -99,6 +101,7 @@ data Exp
     | SendE Name ActualParams
     | LetE Name Exp Exp
     | CreateE Name ActualParams
+    | SelfE
 
 data ActualParams
     = [ActualParam]
