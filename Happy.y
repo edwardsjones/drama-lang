@@ -20,6 +20,8 @@ import Tokens
     '='         { Equals }
     '('         { OpenPar }
     ')'         { ClosePar }
+    '{'         { OpenBrace }
+    '}'         { CloseBrace }
     ','         { Comma }
     '->'        { Handle }
 
@@ -33,8 +35,8 @@ Program         : BehaviourList Instantiation       {}
 BehaviourList   : Behaviour                         { [$1] }
                 | BehaviourList Behaviour           { $2 : $1 }
 
-Behaviour       : behaviour identifier FormalParams 
-                  Exp Receive                       { Behaviour $2 $3 $4 $5 }
+Behaviour       : behaviour identifier '(' FormalParams ')'
+                  '{' Exp Receive '}'               { Behaviour $2 $4 $7 $8 }
 
 Receive         : receive Handling done             { $2 }
 
@@ -50,9 +52,9 @@ Exp             : '(' ')'                           { UnitE }
                 | int                               { NumberE $1 }
                 | send identifier '(' Msg ')'       { SendE $2 $4 }
                 | let identifier '=' Exp in Exp     { LetE $2 $4 $6 }
-                | create identifier ActualParams    { CreateE $2 $3 }
+                | create identifier '(' ActualParams ')'   { CreateE $2 $4 }
 
-Instantiation   : create identifier ActualParams    { Instantiation $2 $3 }
+Instantiation   : create identifier '(' ActualParams ')'   { Instantiation $2 $4 }
 
 FormalParams    : {-- empty --}                     { [] }
                 | FormalParams FormalParam          { $2 : $1 }
