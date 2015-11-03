@@ -25,6 +25,8 @@ tokens :-
     \)                              { \s -> ClosePar }
     \,                              { \s -> Comma }
     \-\>                            { \s -> Handle }
+    \{                              { \s -> OpenBrace }
+    \}                              { \s -> CloseBrace }
     
 {
 data Token =
@@ -42,7 +44,9 @@ data Token =
     OpenPar             |
     ClosePar            |
     Comma               |
-    Handle      
+    Handle              |
+    OpenBrace           |
+    CloseBrace  
     deriving (Eq, Show)
 
 main = do
