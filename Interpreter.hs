@@ -1,39 +1,139 @@
 {-# LANGUAGE TemplateHaskell #-}
-import qualified Data.Map.Strict as Map
+
+module Interpreter where
+
+import qualified Data.Map.Strict as M
 import Control.Lens
+import Types
 
-data Program
-    = Program [Behaviour] Instantiation
+type ActorId
+    = Int
 
-data Behaviour
-    = Behaviour Name FormalParams PreReceive [Receive]
+data GlobalEnv 
+    = GlobalEnv 
+        { _geNextAvailableActor :: ActorId
+        , _geBehaviours :: M.Map Name Behaviour
+        , _geActorInstances :: M.Map ActorId ActorInstance
+        } 
+    
+    deriving (Eq, Show)
 
-data FormalParams
-    = [FormalParam]
+data ActorInstance
+    = ActorInstance
+        { _aiId :: ActorId
+        , _aiInbox :: [Message]
+        , _aiBehaviour :: Behaviour
+        , _aiEnv :: LocalEnv
+        }
 
-type FormalParam
-    = Name
+    deriving (Eq, Show)
 
-type PreReceive
-    = Exp
+data LocalEnv
+    = LocalEnv
+        { _leBindings :: M.Map Name Value
+        , _leConsole :: [String]
+        }
 
-data Receive
-    = Receive [Pat] Exp
+    deriving (Eq, Show)
 
-data Pat
-    = VarP Name
+data Value
+    = UnitV
+    | NumberV Int
+    | ActorV ActorId
+    deriving (Eq, Show)
 
-data ActualParams
-    = [ActualParam]
+type Message
+    = [Value]
 
-type ActualParam
-    = Exp
+--createE for instantiation
+--pass to scheduler
+--scheduler picks actor with mail
+--receive binds params and evaluates expression
+--new genv, repeat
 
-type Name
-    = String
+evalExp :: ActorId -> Exp -> GlobalEnv -> LocalEnv -> (Value, GlobalEnv, LocalEnv)
+evalExp _ UnitE genv lenv 
+    = (UnitV, genv, lenv)
 
-data Instantiation
-    = Instantiation Name ActualParams
+evalExp aid SelfE genv lenv
+    = (ActorV aid, genv, lenv)
+
+evalExp _ (NumberE x) genv lenv
+    = (NumberV x, genv, lenv)
+
+evalExp _ (VarE name) genv lenv
+    = (lookupName name lenv, genv, lenv)
+
+evalExp selfId (SendE name aps) genv lenv
+    = (UnitV, genv'', lenv)
+    where
+        ActorV otherId = lookupName name lenv
+        (msg, genv', lenv') = evalExps selfId aps genv lenv
+        otherInst = lookupActorInstance otherId genv' 
+        newInbox = (_aiInbox otherInst) ++ [msg]
+        otherInst' = otherInst { _aiInbox = newInbox }
+        genv'' = genv' { _geActorInstances = M.insert otherId otherInst' (_geActorInstances genv') }
+
+evalExp aid (LetE name exp1 exp2) genv lenv
+    = evalExp aid exp2 genv' lenv''
+    where
+        (v, genv', lenv') = evalExp aid exp1 genv lenv
+        lenv'' = lenv' { _leBindings = M.insert name v (_leBindings lenv') }
+
+evalExp aid (CreateE name aps) genv lenv
+    = (ActorV newId, genv''', lenv')
+    where
+        behaviour@(Behaviour _ fps _ _) = lookupBehaviour name genv
+        newId = _geNextAvailableActor genv
+        genv' = genv { _geNextAvailableActor = newId + 1 }
+        (vs, genv'', lenv') = evalExps aid aps genv' lenv
+        newLocalEnv 
+            = LocalEnv 
+                { _leBindings = M.fromList (zip fps vs) 
+                , _leConsole = []
+                }
+        newActor 
+            = ActorInstance
+                { _aiId = newId
+                , _aiInbox = []
+                , _aiBehaviour = behaviour
+                , _aiEnv = newLocalEnv
+                }
+        genv''' = genv'' { _geActorInstances = M.insert newId newActor (_geActorInstances genv'') }
+
+evalExp aid (PrintE s e) genv lenv
+    = evalExp aid e genv lenv'
+    where
+        lenv' = lenv { _leConsole = _leConsole lenv ++ [s] }
+
+evalExps :: ActorId -> [Exp] -> GlobalEnv -> LocalEnv -> ([Value], GlobalEnv, LocalEnv)
+evalExps _ [] genv lenv
+    = ([], genv, lenv)
+evalExps aid (e : es) genv lenv
+    = (v : vs, genv'', lenv'') 
+    where 
+        (v, genv', lenv') = evalExp aid e genv lenv
+        (vs, genv'', lenv'') = evalExps aid es genv' lenv'
+        
+lookupName :: Name -> LocalEnv -> Value
+lookupName name lenv
+    = case M.lookup name (_leBindings lenv) of 
+        Just v  -> v
+        Nothing -> error "lookupName: unbound variable"
+
+lookupActorInstance :: ActorId -> GlobalEnv -> ActorInstance
+lookupActorInstance aid genv
+    = case M.lookup aid (_geActorInstances genv) of 
+        Just i  -> i
+        Nothing -> error "lookupActorInstance: invalid id"
+
+lookupBehaviour :: Name -> GlobalEnv -> Behaviour
+lookupBehaviour name genv
+    = case M.lookup name (_geBehaviours genv) of
+        Just b  -> b
+        Nothing -> error "lookupBehaviour: unbound behaviour"
+
+{-
 
 type ActorId
     = Int deriving (Ord)
@@ -128,7 +228,6 @@ create name params env =    let actor = ActorInstance
                                             }
                                 in (actor, (set _eActorInstances --how to manipulate map?
 
-{-
 addBinding :: Name -> a -> Env -> Env
 addBinding name e env   = (name, e) : env
 
