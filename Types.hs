@@ -17,13 +17,11 @@ type FormalParam
 type PreReceive
     = Exp
 
-data Receive
-    = Receive [Pat] Exp
-    deriving (Eq, Show)
+type Receive
+    = (Pat, Exp)
 
-data Pat
-    = VarP Name
-    deriving (Eq, Show)
+type Pat
+    = FormalParams
 
 type ActualParams
     = [ActualParam]
