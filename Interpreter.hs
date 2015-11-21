@@ -3,6 +3,7 @@
 module Interpreter where
 
 import qualified Data.Map.Strict as M
+import System.Random 
 import Control.Lens
 import Types
 
@@ -24,6 +25,7 @@ data ActorInstance
         , _aiInbox :: [Message]
         , _aiBehaviour :: Behaviour
         , _aiEnv :: LocalEnv
+        , _aiCanReceive :: Bool
         }
 
     deriving (Eq, Show)
@@ -47,9 +49,109 @@ type Message
 
 --createE for instantiation
 --pass to scheduler
---scheduler picks actor with mail
---receive binds params and evaluates expression
---new genv, repeat
+--scheduler picks actor with mail or who hasn't executed prereceive
+--receive binds params and evaluates expression, returning new genv and lenv
+--bind lenv, call scheduler again with new genv
+--repeat untill no mail
+evalProgram :: Program -> ()
+evalProgram (Program bs inst)
+    = scheduler genv'
+    where
+        genv = initialEnv bs
+        (aid, genv') = instantiate inst genv 
+
+--neads to evaluate either a message, or prereceive
+--will then call schedule again with new genv
+--works out next actor by getting ids, getting ready ones, and then picking one
+--doesn't actually need an actor id, works out itself
+scheduler :: GlobalEnv -> ()
+scheduler genv
+    = if null ready 
+        then () 
+        else let toBeEval = head ready 
+                 actor = (lookupActorInstance toBeEval genv)
+                 readyToReceive = (_aiCanReceive actor) 
+                 actorId = (_aiId actor)
+                 (Behaviour _ _ pr rec) = (_aiBehaviour actor)
+                 lenv = (_aiEnv actor) in
+            if readyToReceive 
+                then let (v, genv', lenv') = receive actor genv lenv rec in
+                    scheduler genv'
+                else let (v, genv', lenv') = preReceive actorId pr genv lenv in
+                    scheduler genv'
+    where 
+        allIds = M.keys (_geActorInstances genv)
+        ready = getReady allIds genv
+
+preReceive :: ActorId -> PreReceive -> GlobalEnv -> LocalEnv -> (Value, GlobalEnv, LocalEnv)
+preReceive aid pr genv lenv 
+    = (v, genv'', lenv')
+    where
+        (v, genv', lenv') = evalExp aid pr genv lenv
+        actor = lookupActorInstance aid genv'
+        newActor = actor { _aiCanReceive = True }
+        genv'' = genv' { _geActorInstances = (M.update (replaceActor newActor) (_aiId actor) (_geActorInstances genv')) }
+
+replaceActor :: ActorInstance -> ActorInstance -> Maybe ActorInstance
+replaceActor newActor oldActor = if oldActor == oldActor then Just newActor else Nothing
+
+receive :: ActorInstance -> GlobalEnv -> LocalEnv -> [Receive] -> (Value, GlobalEnv, LocalEnv)
+receive ai genv lenv rec 
+    = (v, genv', lenv''')
+    where
+        --remove msg, and populate genv with updated actor
+        actualMsgParams = head (_aiInbox ai)
+        ai' = ai { _aiInbox = tail (_aiInbox ai) }
+        genv' = genv { _geActorInstances = (M.update (replaceActor ai') (_aiId ai) (_geActorInstances genv)) }
+
+        --match on arity and bind params
+        matching = matchArity rec actualMsgParams
+        formalMsgParams = fst matching
+        handlingExp = snd matching
+        bindings = M.fromList (zip formalMsgParams actualMsgParams)
+        lenv' = lenv { _leBindings = M.union (_leBindings lenv) bindings }
+    
+        --eval exp and unbind params, but keep debug strings
+        (v, genv'', lenv'') = evalExp (_aiId ai) handlingExp genv' lenv'
+        lenv''' = lenv' { _leConsole = (_leConsole lenv'') }
+        
+
+matchArity :: [Receive] -> Message -> Receive
+matchArity [] _ = error "matchArity: no matching cases for message"
+matchArity (r : rs) msg = if length r == length msg then r else matchArity rs msg
+
+initialEnv :: [Behaviour] -> GlobalEnv
+initialEnv [] = error "initalEnv: no behaviours defined"
+initialEnv bs
+    = GlobalEnv
+        { _geNextAvailableActor = 1
+        , _geBehaviours = behaviourMap
+        , _geActorInstances = M.fromList []
+        } 
+    where 
+        behaviourNames = getNames bs
+        behaviourMap = M.fromList (zip behaviourNames bs)
+
+getNames :: [Behaviour] -> [Name]
+getNames [] = []
+getNames ((Behaviour name _ _ _) : bs) = name : getNames bs
+
+instantiate :: Instantiation -> GlobalEnv -> (ActorId, GlobalEnv)
+instantiate (Instantiation name aps) genv
+    = (firstId, genv')
+    where
+        (ActorV firstId, genv', lenv) = evalExp 0 (CreateE name aps) genv (LocalEnv { _leBindings = M.fromList [], _leConsole = [] })
+
+getReady :: [ActorId] -> GlobalEnv -> [ActorId]
+getReady [] _ = []
+getReady (aid : aids) genv
+    = if ready then aid : getReady aids genv else getReady aids genv
+    where 
+        actorInst = lookupActorInstance aid genv
+        ready = if (not (_aiCanReceive actorInst)) then True else not (null (_aiInbox actorInst))
+
+pickRandom :: [a] -> IO a
+pickRandom as = randomRIO (0, length as - 1) >>= return . (as !!)
 
 evalExp :: ActorId -> Exp -> GlobalEnv -> LocalEnv -> (Value, GlobalEnv, LocalEnv)
 evalExp _ UnitE genv lenv 
@@ -98,6 +200,7 @@ evalExp aid (CreateE name aps) genv lenv
                 , _aiInbox = []
                 , _aiBehaviour = behaviour
                 , _aiEnv = newLocalEnv
+                , _aiCanReceive = False
                 }
         genv''' = genv'' { _geActorInstances = M.insert newId newActor (_geActorInstances genv'') }
 
@@ -132,132 +235,3 @@ lookupBehaviour name genv
     = case M.lookup name (_geBehaviours genv) of
         Just b  -> b
         Nothing -> error "lookupBehaviour: unbound behaviour"
-
-{-
-
-type ActorId
-    = Int deriving (Ord)
-
-data LocalEnv
-    = [(Name, Int)]
-
-data Env
-    = Env
-        { _eNextAvailableActor :: ActorId
-        , _eNextScheduledActor :: ActorId
-        , _eActorInstances :: Map ActorId ActorInstance
-        , _eLocalEnvironments :: Map ActorId LocalEnv
-        , _eBehaviours :: [Behaviour]
-        } deriving (Show)
-makeLenses ''Env
-
-data ActorInstance
-    = ActorInstance
-        { _aiId :: ActorId
-        , _aiInbox :: [Message]
-        , _aiBehaviour :: (Behaviour, ActualParams)
-        } deriving (Show)
-makeLenses ''ActorInstance
-
-data Exp a where
-    UnitE :: Exp ()
-    SelfE :: Exp Int
-    IntE :: Int -> Exp Int
-    VarE :: Name -> Exp a
-    SendE :: Int -> ActualParams -> Exp () 
-    LetE :: Exp Name -> Exp Name -> Exp a -> Exp ()
-    CreateE :: Name -> ActualParams -> Exp ActorId
-
---needs work..
-eval :: Exp a -> Env -> (a, Env)
-eval (UnitE) env = ((), env)
-eval (SelfE) env = ((view _eNextScheduledActor), Env)
-eval (IntE n) env = (n, env)
-eval (VarE v) env = eval (lookup v env) env
-eval (SendE e1 e2) env = ((send (eval e1 env) (eval e2 env)), env)
-eval (LetE name e1 e2) env = eval e2 (addBinding name (eval e1 env) env)
-eval (CreateE e1 e2) env = create (lookup e1 env) (eval e2 env)
-
---binds the list of behaviours to the global environment
-initialEnv :: Program -> Env
-initialEnv (Program [] _) = error "no behaviours defined"
-initialEnv (Program behaviourList _) =  Env 
-                                            { _eNextAvailableActor = ActorId 0
-                                            , _eNextScheduledActor = ActorId 0
-                                            , _eActorInstances = Map.empty
-                                            , _eLocalEnvironments = Map.empty
-                                            , _eBehaviours = behaviourList
-                                            }
-
---creates first actor, changes env accordingly and calls step
-instantiate :: Program -> Env -> (ActorInstance, Env)
-instantiate (Program _ (Instantiation name params)) env =   let actor = ActorInstance 
-                                                                            { _aiId = view _eNextAvailableActor
-                                                                            , _aiInbox = []
-                                                                            , _aiBehaviour = ((behaviourLookup name (view _eBehaviours)), params)
-                                                                            } 
-                                                                in step (actor, (set _eActorInstances
-
-step :: ActorInstance -> Env -> (ActorInstance, Env)
---takes an actor instance and an environment,
---evaluates some code (ie receives a message or evals prereceive statements)
---returns the new changed actor state and the global environment
---gets next actor instance via scheduler, and recurses untill no more actors
-
-scheduler :: [ActorInstance] -> Maybe ActorInstance
---looks at the list of actors and provides the next one to evaluate in
---returns None when execution is complete
-
---takes an actorId, sends a message, returns nothing
-send :: ActorId -> Message -> ()
-send id msg =   let actor = Map.lookup id (view _eActorInstances)
-                    in --set actors inbox to current inbox with message on the end..
-
-lookup :: Name -> Env -> Int
---have to use lenses to extract localenv
-
-addBinding :: Name -> Int -> Env -> Env
---have to use lenses to extract localenv
-
---get behaviour, create new actor record and chang env accordingly
-create :: Name -> ActualParams -> Env -> (ActorId, Env)
-create name params env =    let actor = ActorInstance 
-                                            { _aiId = view _eNextAvailableActor
-                                            , _aiInbox = []
-                                            , _aiBehvaiour = (behaviourLookup name (view _eBehaviours), params)
-                                            }
-                                in (actor, (set _eActorInstances --how to manipulate map?
-
-addBinding :: Name -> a -> Env -> Env
-addBinding name e env   = (name, e) : env
-
-create :: Behaviour -> ActualParams -> Env -> [Actor]
-create beh params env   = let act = Actor { address = newAddress, behaviour = beh, params = params, inbox = [] } in
-                            let actorList = (lookup (Name "@actors") env) in
-                                act : actorList
-
-data Actor = Actor  { address :: Int
-                    , behaviour :: Behaviour
-                    , params :: ActualParams
-                    , inbox :: [Message]
-                    } deriving (Show, Eq) 
-
-bindBehaviours :: [Behaviour] -> Env
-bindBehaviours []   = []
-bindBehaviours [(n fp pr rs)]    = [(n, (fp, pr, rs))]
-bindBehaviours (n fp pr rs) : xs = (n, (fp, pr, rs)) : (bindBehaviours xs)
-
---add clauses to look for behaviours and actors first
-lookup :: Name -> Env -> Exp a 
-lookup n []         = error "no variable with that name"
-lookup n (x,y):xs   = if n == x then y else lookup n xs
-
---possibly not needed
-behaviourLookup :: Name -> BehaviourEnv -> --closure 
-behaviourLookup n []    = error "no behaviour with that name"
-behaviourLookup n (nm, (fp, pr, rs)) : xs   = if n == nm then (fp, pr, rs) else behaviourLookup n xs
-
-send :: Address -> Env -> Message -> ()
-send _ [] _ = error "no actor with that address"
-send adr (Actor {address=x}):xs mes  = if x == adr then --put mes in actor's inbox else send adr xs mes
--}
