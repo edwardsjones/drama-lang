@@ -14,6 +14,7 @@ import Types
     send        { SendTk }
     receive     { ReceiveTk }
     done        { DoneTk }
+    print       { PrintTk }
     let         { LetTk }
     in          { InTk }
     self        { SelfTk }
@@ -32,7 +33,7 @@ import Types
 %left '='
 %%
 
-Program         : BehaviourList Instantiation               {}
+Program         : BehaviourList Instantiation               { Program $1 $2 }
 
 BehaviourList   : Behaviour                                 { [$1] }
                 | BehaviourList Behaviour                   { $2 : $1 }
@@ -55,6 +56,7 @@ MsgAP           : {-- empty --}                             { [] }
 
 Exp             : '(' ')'                                   { UnitE }
                 | self                                      { SelfE }
+                | print identifier Exp                      { PrintE $2 $3 }
                 | identifier                                { VarE $1 }
                 | int                                       { NumberE $1 }
                 | send identifier '(' MsgAP ')'             { SendE $2 $4 }
