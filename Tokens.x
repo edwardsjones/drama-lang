@@ -1,5 +1,5 @@
 {
-module Main (main) where
+module Tokens where
 }
 
 %wrapper "basic"
@@ -9,46 +9,48 @@ $alpha = [a-zA-Z]
 
 tokens :-
     
-    $white+         ;
-    create                          { \s -> Create }
-    behaviour                       { \s -> Behaviour }
-    address                         { \s -> Address }
-    send                            { \s -> Send }
-    receive                         { \s -> Receive }
-    done                            { \s -> Done }
-    let                             { \s -> Let }
-    in                              { \s -> In }
-    self                            { \s -> Self }
-    $digit+                         { \s -> Int (read s) }
-    \=                              { \s -> Equals } 
-    $alpha [$alpha $digit \_ \']*   { \s -> Identifier s }
-    \(                              { \s -> OpenPar }
-    \)                              { \s -> ClosePar }
-    \,                              { \s -> Comma }
-    \-\>                            { \s -> Handle }
-    \{                              { \s -> OpenBrace }
-    \}                              { \s -> CloseBrace }
+    $white+                         ;
+    create                          { \s -> CreateTk }
+    behaviour                       { \s -> BehaviourTk }
+    print                           { \s -> PrintTk }
+    address                         { \s -> AddressTk }
+    send                            { \s -> SendTk }
+    receive                         { \s -> ReceiveTk }
+    done                            { \s -> DoneTk }
+    let                             { \s -> LetTk }
+    in                              { \s -> InTk }
+    self                            { \s -> SelfTk }
+    $digit+                         { \s -> IntTk (read s) }
+    \=                              { \s -> EqualsTk } 
+    $alpha [$alpha $digit \_ \']*   { \s -> IdentifierTk s }
+    \(                              { \s -> OpenParTk }
+    \)                              { \s -> CloseParTk }
+    \,                              { \s -> CommaTk }
+    \-\>                            { \s -> HandleTk }
+    \{                              { \s -> OpenBraceTk }
+    \}                              { \s -> CloseBraceTk }
     
 {
 data Token =
-    Create              |
-    Behaviour           |
-    Address             |
-    Send                |
-    Receive             |
-    Done                |
-    Let                 |
-    In                  |
-    Self                |
-    Int Int             | 
-    Equals              |
-    Identifier String   |
-    OpenPar             |
-    ClosePar            |
-    Comma               |
-    Handle              |
-    OpenBrace           |
-    CloseBrace  
+    CreateTk            |
+    BehaviourTk         |
+    PrintTk             |
+    AddressTk           |
+    SendTk              |
+    ReceiveTk           |
+    DoneTk              |
+    LetTk               |
+    InTk                |
+    SelfTk              |
+    IntTk Int           | 
+    EqualsTk            |
+    IdentifierTk String |
+    OpenParTk           |
+    CloseParTk          |
+    CommaTk             |
+    HandleTk            |
+    OpenBraceTk         |
+    CloseBraceTk  
     deriving (Eq, Show)
 
 main = do
