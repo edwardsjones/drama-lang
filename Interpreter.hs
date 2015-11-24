@@ -53,7 +53,7 @@ type Message
 --receive binds params and evaluates expression, returning new genv and lenv
 --bind lenv, call scheduler again with new genv
 --repeat untill no mail
-evalProgram :: Program -> ()
+evalProgram :: Program -> GlobalEnv
 evalProgram (Program bs inst)
     = scheduler genv'
     where
@@ -64,10 +64,10 @@ evalProgram (Program bs inst)
 --will then call schedule again with new genv
 --works out next actor by getting ids, getting ready ones, and then picking one
 --doesn't actually need an actor id, works out itself
-scheduler :: GlobalEnv -> ()
+scheduler :: GlobalEnv -> GlobalEnv
 scheduler genv
     = if null ready 
-        then () 
+        then genv
         else let toBeEval = head ready 
                  actor = (lookupActorInstance toBeEval genv)
                  readyToReceive = (_aiCanReceive actor) 
