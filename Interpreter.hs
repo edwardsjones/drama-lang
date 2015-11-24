@@ -63,7 +63,6 @@ evalProgram (Program bs inst)
 --neads to evaluate either a message, or prereceive
 --will then call schedule again with new genv
 --works out next actor by getting ids, getting ready ones, and then picking one
---doesn't actually need an actor id, works out itself
 scheduler :: GlobalEnv -> GlobalEnv
 scheduler genv
     = if null ready 
@@ -75,10 +74,14 @@ scheduler genv
                  (Behaviour _ _ pr rec) = (_aiBehaviour actor)
                  lenv = (_aiEnv actor) in
             if readyToReceive 
-                then let (v, genv', lenv') = receive actor genv lenv rec in
-                    scheduler genv'
-                else let (v, genv', lenv') = preReceive actorId pr genv lenv in
-                    scheduler genv'
+                then let (v, genv', lenv') = receive actor genv lenv rec 
+                         newActor = (lookupActorInstance actorId genv') { _aiEnv = lenv' } 
+                         genv'' = genv' { _geActorInstances = (M.update (replaceActor newActor) actorId (_geActorInstances genv')) } in
+                    scheduler genv''
+                else let (v, genv', lenv') = preReceive actorId pr genv lenv 
+                         newActor = (lookupActorInstance actorId genv') { _aiEnv = lenv' } 
+                         genv'' = genv' { _geActorInstances = (M.update (replaceActor newActor) actorId (_geActorInstances genv')) } in
+                    scheduler genv''
     where 
         allIds = M.keys (_geActorInstances genv)
         ready = getReady allIds genv
@@ -97,7 +100,7 @@ replaceActor newActor oldActor = if oldActor == oldActor then Just newActor else
 
 receive :: ActorInstance -> GlobalEnv -> LocalEnv -> [Receive] -> (Value, GlobalEnv, LocalEnv)
 receive ai genv lenv rec 
-    = (v, genv', lenv''')
+    = (v, genv'', lenv''')
     where
         --remove msg, and populate genv with updated actor
         actualMsgParams = head (_aiInbox ai)
