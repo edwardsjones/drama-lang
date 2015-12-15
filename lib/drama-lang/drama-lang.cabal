@@ -25,6 +25,7 @@ Library
                     , base
                     , containers
                     , lens
+                    , mtl
                     , random
 
   Build-Tools:        alex
