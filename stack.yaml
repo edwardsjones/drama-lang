@@ -1,0 +1,9 @@
+resolver: lts-3.14
+flags: {}
+
+packages:
+- 'bin/drama-interpreter'
+
+- 'lib/drama-lang'
+
+extra-deps: []

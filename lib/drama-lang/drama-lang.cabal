@@ -1,0 +1,35 @@
+Name:                 drama-lang
+Version:              0.1.0.0
+Synopsis:             The Drama language.
+Description:          Please see README.md.
+
+License:              AllRightsReserved
+Category:             Language
+Build-Type:           Simple
+
+Cabal-Version:        >= 1.10
+
+Extra-Source-Files:   Happy.y
+                    , Tokens.x
+
+Library
+  Hs-Source-Dirs:     src
+  Exposed-Modules:    Happy
+                    , Interpreter
+                    , Tokens
+                    , Types
+
+  Other-Modules:
+
+  Build-Depends:      array 
+                    , base
+                    , containers
+                    , lens
+                    , random
+
+  Build-Tools:        alex
+                    , happy
+
+  Default-Language:   Haskell2010
+  Ghc-Options:        
+

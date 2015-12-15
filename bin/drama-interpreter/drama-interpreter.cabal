@@ -1,0 +1,25 @@
+Name:                 drama-interpreter
+Version:              0.1.0.0
+Synopsis:             The Drama interpreter.
+Description:          Please see README.md.
+
+License:              AllRightsReserved
+Category:             Language
+Build-Type:           Simple
+
+Cabal-Version:        >= 1.10
+
+Executable drama
+  Hs-Source-Dirs:     src
+  Main-Is:            Main.hs
+
+  Other-Modules:
+
+  Build-Depends:      drama-lang
+
+                    , base
+
+  Build-Tools:        
+
+  Default-Language:   Haskell2010
+  Ghc-Options:        
