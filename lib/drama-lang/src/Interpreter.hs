@@ -135,23 +135,36 @@ replaceActor newActor oldActor = if oldActor == oldActor then Just newActor else
 receive :: ActorInstance -> [Receive] -> State IState Value
 receive ai rec 
     = do
+        -- get first message, and remove from actors inbox
         let (aps : msgs) = _aiInbox ai
             ai' = ai { _aiInbox = msgs }
         is <- get
         let genv = _isGlobalEnv is
+            -- new genv where actor is updated (with new mailbox)
             genv' = genv { _geActorInstances = M.update (replaceActor ai') (_aiId ai) (_geActorInstances genv) }
+            -- patternmatch msg on arity
             (fps, handling) = matchArity rec aps
+            -- bind formal params to values in msg
             bindings = M.fromList (zip fps aps)
             lenv = _isLocalEnv is
+            -- add in new bindings to lenv
             lenv' = lenv { _leBindings = M.union (_leBindings lenv) bindings }
+            -- new state with actor with one less message and lenv with msg bindings
             is' = is { _isGlobalEnv = genv', _isLocalEnv = lenv' }
         put is'
+        -- eval expression of matched msg handler
         v <- evalExp (_aiId ai) handling 
         
         is2 <- get
         let lenv2 = _isLocalEnv is2
+            -- puts local bindings back in lenv, but keeps console messages
             lenv2' = lenv2 { _leBindings = _leBindings lenv }
-            is2' = is2 { _isLocalEnv = lenv2' }
+            -- create new actor with new lenv, put back in genv
+            ai2 = ai' { _aiEnv = lenv2' }
+            -- need to modify genv, and put in local env to actor
+            genv2 = _isGlobalEnv is2
+            genv2' = genv2 { _geActorInstances = M.update (replaceActor ai2) (_aiId ai2) (_geActorInstances genv2) }
+            is2' = is2 { _isLocalEnv = lenv2', _isGlobalEnv = genv2' }
         put is2'
 
         return v
