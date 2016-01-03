@@ -12,7 +12,7 @@ import Debug.Trace
 data IState
     = IState
         { _isGlobalEnv :: GlobalEnv
-        , _isLocalEnv :: LocalEnv
+        , _isCurrentAID :: ActorId
         }
 
     deriving (Eq, Show)
@@ -57,6 +57,22 @@ data Value
 type Message
     = [Value]
 
+$(makeLenses ''IState)
+$(makeLenses ''GlobalEnv)
+$(makeLenses ''LocalEnv)
+$(makeLenses ''ActorInstance)
+
+isLocalEnv :: Lens' IState LocalEnv
+isLocalEnv f is
+    = fmap k (f lenv)
+    where
+        genv = _isGlobalEnv is
+        aid = _isCurrentAID is
+        instances = _geActorInstances genv
+        actor = M.findWithDefault (error ("isLocalEnv error: no actor with id " ++ show aid)) aid instances
+        lenv = _aiEnv actor
+        k lenv' = is { _isGlobalEnv = genv { _geActorInstances = M.insert aid (actor { _aiEnv = lenv' }) instances } }
+
 --createE for instantiation
 --pass to scheduler
 --scheduler picks actor with mail or who hasn't executed prereceive
@@ -71,8 +87,7 @@ evalProgram (Program bs inst)
       in _isGlobalEnv is'
     where
         genv = initialEnv bs
-        is = IState { _isGlobalEnv = genv, _isLocalEnv = undefined }
-
+        is = IState { _isGlobalEnv = genv, _isCurrentAID = 0 }
 
 --neads to evaluate either a message, or prereceive
 --will then call schedule again with new genv
@@ -81,52 +96,38 @@ scheduler :: State IState ()
 scheduler
     = do 
         is <- get
-        let genv = _isGlobalEnv is
+        let genv = trace ("Scheduling, current genv is " ++ (show (_isGlobalEnv is)) ++ "\n") _isGlobalEnv is
             allIds = M.keys (_geActorInstances genv)
         ready <- getReady allIds
         if null ready 
             then return ()
             else do 
-                let toBeEval = head ready
+                let toBeEval = trace ("Ready actor is " ++ (show (head ready)) ++ "\n") head ready
                 actor <- lookupActorInstance toBeEval
                 let readyToReceive = _aiCanReceive actor
                     actorId = _aiId actor
                     Behaviour _ _ pr rec = _aiBehaviour actor
                     lenv = _aiEnv actor
+                isCurrentAID .= actorId
                 if readyToReceive
                     then do
                         v <- receive actor rec
-                        is <- get
                         newActor <- lookupActorInstance actorId 
-                        let newActor' = newActor { _aiEnv = _isLocalEnv is }
-                            genv = _isGlobalEnv is
-                            genv' = genv { _geActorInstances = M.update (replaceActor newActor) actorId (_geActorInstances genv) }
-                            is' = is { _isGlobalEnv = genv' }
-                        put is'
+                        isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) actorId
                         scheduler
                     else do 
                         v <- preReceive actorId pr
-                        is <- get
                         newActor <- lookupActorInstance actorId 
-                        let newActor' = newActor { _aiEnv = _isLocalEnv is }
-                            genv = _isGlobalEnv is
-                            genv' = genv { _geActorInstances = M.update (replaceActor newActor) actorId (_geActorInstances genv) }
-                            is' = is { _isGlobalEnv = genv' }
-                        put is'
+                        isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) actorId
                         scheduler
 
---preReceive :: ActorId -> PreReceive -> GlobalEnv -> LocalEnv -> (Value, GlobalEnv, LocalEnv)
 preReceive :: ActorId -> PreReceive -> State IState Value
 preReceive aid pr 
     = do
         v <- evalExp aid pr
         actor <- lookupActorInstance aid
-        is <- get
         let newActor = actor { _aiCanReceive = True }
-            genv = _isGlobalEnv is
-            genv' = genv { _geActorInstances = M.update (replaceActor newActor) (_aiId actor) (_geActorInstances genv) }
-            is' = is { _isGlobalEnv = genv' }
-        put is'
+        isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) (_aiId actor) 
         return v
 
 replaceActor :: ActorInstance -> ActorInstance -> Maybe ActorInstance
@@ -135,37 +136,33 @@ replaceActor newActor oldActor = if oldActor == oldActor then Just newActor else
 receive :: ActorInstance -> [Receive] -> State IState Value
 receive ai rec 
     = do
-        -- get first message, and remove from actors inbox
-        let (aps : msgs) = _aiInbox ai
+        -- get aps from msg, and take out that msg
+        let (aps : msgs) = trace ("Receive on actor " ++ (show ai)) _aiInbox ai
             ai' = ai { _aiInbox = msgs }
-        is <- get
-        let genv = _isGlobalEnv is
-            -- new genv where actor is updated (with new mailbox)
-            genv' = genv { _geActorInstances = M.update (replaceActor ai') (_aiId ai) (_geActorInstances genv) }
-            -- patternmatch msg on arity
-            (fps, handling) = matchArity rec aps
-            -- bind formal params to values in msg
+
+        -- replace the actor with one which doesn't have that msg anymore
+        isGlobalEnv . geActorInstances %= M.update (replaceActor ai') (_aiId ai)
+
+        -- find which handler to use, and create new msg bindings
+        let (fps, handling) = matchArity rec aps
             bindings = M.fromList (zip fps aps)
-            lenv = _isLocalEnv is
-            -- add in new bindings to lenv
-            lenv' = lenv { _leBindings = M.union (_leBindings lenv) bindings }
-            -- new state with actor with one less message and lenv with msg bindings
-            is' = is { _isGlobalEnv = genv', _isLocalEnv = lenv' }
-        put is'
+        -- get env without msg bindings, for after
+        lenv <- use isLocalEnv
+        -- add msg bindings to lenv
+        isLocalEnv . leBindings %= M.union bindings
+
         -- eval expression of matched msg handler
         v <- evalExp (_aiId ai) handling 
         
-        is2 <- get
-        let lenv2 = _isLocalEnv is2
-            -- puts local bindings back in lenv, but keeps console messages
-            lenv2' = lenv2 { _leBindings = _leBindings lenv }
-            -- create new actor with new lenv, put back in genv
-            ai2 = ai' { _aiEnv = lenv2' }
-            -- need to modify genv, and put in local env to actor
-            genv2 = _isGlobalEnv is2
-            genv2' = genv2 { _geActorInstances = M.update (replaceActor ai2) (_aiId ai2) (_geActorInstances genv2) }
-            is2' = is2 { _isLocalEnv = lenv2', _isGlobalEnv = genv2' }
-        put is2'
+        -- make sure to get rid of temporary msg bindings in actor's local env
+        -- put original bindings back
+        isLocalEnv . leBindings .= _leBindings lenv
+        -- get current lenv, minus temp bindings
+        lenv2 <- use isLocalEnv
+        -- actor becomes one after execution, but without msg bindings
+        let ai2 = ai' { _aiEnv = lenv2 }
+        -- replace actor with new one
+        isGlobalEnv . geActorInstances %= M.update (replaceActor ai2) (_aiId ai2)
 
         return v
 
@@ -179,7 +176,7 @@ initialEnv bs
     = GlobalEnv
         { _geNextAvailableActor = 1
         , _geBehaviours = behaviourMap
-        , _geActorInstances = M.fromList []
+        , _geActorInstances = M.empty
         } 
     where 
         behaviourNames = getNames bs
@@ -192,11 +189,6 @@ getNames ((Behaviour name _ _ _) : bs) = name : getNames bs
 instantiate :: Instantiation -> State IState ActorId
 instantiate (Instantiation name aps)
     = do
-        is <- get
-        let genv = _isGlobalEnv is
-            lenv = (LocalEnv { _leBindings = M.fromList [], _leConsole = [] })
-            is' = is { _isGlobalEnv = genv, _isLocalEnv = lenv }
-        put is'
         ActorV firstId <- evalExp 0 (CreateE name aps) 
         return firstId
 
@@ -209,7 +201,6 @@ getReady (aid : aids)
         readyAids <- getReady aids
         return (if ready then aid : readyAids else readyAids)
 
---evalExp :: ActorId -> Exp -> GlobalEnv -> LocalEnv -> (Value, GlobalEnv, LocalEnv)
 evalExp :: ActorId -> Exp -> State IState Value
 evalExp _ UnitE
     = return UnitV
@@ -230,32 +221,19 @@ evalExp selfId (SendE name aps)
         otherInst <- lookupActorInstance otherId
         let newInbox = (_aiInbox otherInst) ++ [msg]
             otherInst' = otherInst { _aiInbox = newInbox }
-        is <- get
-        let genv = (_isGlobalEnv is)
-            genv' = genv { _geActorInstances = M.insert otherId otherInst' (_geActorInstances genv) }
-            is' = is { _isGlobalEnv = genv' }
-        put is'
+        isGlobalEnv . geActorInstances %= M.insert otherId otherInst'
         return UnitV
 
 evalExp aid (LetE name exp1 exp2)
     = do
         v <- evalExp aid exp1
-        is <- get
-        let lenv = _isLocalEnv is
-            lenv' = lenv { _leBindings = M.insert name v (_leBindings lenv) }
-            is' = is { _isLocalEnv = lenv' }
-        put is'
+        isLocalEnv . leBindings %= M.insert name v
         evalExp aid exp2
 
 evalExp aid (CreateE name aps)
     = do 
         behaviour@(Behaviour _ fps _ _) <- lookupBehaviour name
-        is <- get
-        let genv = _isGlobalEnv is
-            newId = _geNextAvailableActor genv
-            genv' = genv { _geNextAvailableActor = newId + 1 }
-            is' = is { _isGlobalEnv = genv' }
-        put is'
+        newId <- isGlobalEnv . geNextAvailableActor <<%= (+1)
         vs <- evalExps aid aps 
         let newLocalEnv 
                 = LocalEnv 
@@ -270,19 +248,12 @@ evalExp aid (CreateE name aps)
                     , _aiEnv = newLocalEnv
                     , _aiCanReceive = False
                     }
-        is2 <- get
-        let genv2 = _isGlobalEnv is2
-            genv2' = genv2 { _geActorInstances = M.insert newId newActor (_geActorInstances genv2) }
-            is2' = is2 { _isGlobalEnv = genv2' }
-        put is2'
+        isGlobalEnv . geActorInstances %= M.insert newId newActor
         return (ActorV newId)
 
 evalExp aid (PrintE s e)
     = do
-        is <- get
-        let lenv = _isLocalEnv is
-            lenv' = lenv { _leConsole = _leConsole lenv ++ [s] }
-        put (is { _isLocalEnv = lenv' })
+        isLocalEnv . leConsole %= (++ [s])
         evalExp aid e
 
 evalExps :: ActorId -> [Exp] -> State IState [Value]
@@ -298,26 +269,18 @@ evalExps aid (e : es)
 lookupName :: Name -> State IState Value
 lookupName name 
     = do 
-        is <- get
-        let lenv = _isLocalEnv is
-        case M.lookup name (_leBindings lenv) of 
-            Just v  -> return v
-            Nothing -> error "lookupName: unbound variable"
+        bindings <- use (isLocalEnv . leBindings)
+        lenv <- use isLocalEnv
+        return (M.findWithDefault (error (show lenv)) name bindings)
 
 lookupActorInstance :: ActorId -> State IState ActorInstance
 lookupActorInstance aid 
     = do 
-        is <- get
-        let genv = _isGlobalEnv is
-        case M.lookup aid (_geActorInstances genv) of 
-            Just i  -> return i
-            Nothing -> error "lookupActorInstance: invalid id"
+        actors <- use (isGlobalEnv . geActorInstances)
+        return (M.findWithDefault (error "lookupActorInstance: invalid id") aid actors)
 
 lookupBehaviour :: Name -> State IState Behaviour
 lookupBehaviour name 
     = do 
-        is <- get
-        let genv = _isGlobalEnv is
-        case M.lookup name (_geBehaviours genv) of
-            Just b  -> return b
-            Nothing -> error "lookupBehaviour: unbound behaviour"
+        behaviours <- use (isGlobalEnv . geBehaviours)
+        return (M.findWithDefault (error "lookupBehaviour: unbound behaviour") name behaviours)
