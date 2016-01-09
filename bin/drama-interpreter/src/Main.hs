@@ -10,4 +10,4 @@ main = do
     s <- getArgs
     fileContents <- readFile $ head s
     let ast = P.parseDrama $ L.alexScanTokens fileContents
-    print (I.evalProgram ast)
+    I.stepProgram ast

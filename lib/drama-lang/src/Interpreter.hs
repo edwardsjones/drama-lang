@@ -8,6 +8,7 @@ module Interpreter where
 
 import qualified Data.Map.Strict as M
 import System.Random 
+import System.IO
 import Control.Monad.State
 import Control.Lens
 import Types
@@ -167,10 +168,46 @@ evalProgram (Program bs inst)
         genv = initialEnv bs
         is = IState { _isGlobalEnv = genv, _isCurrentAID = 0 }
 
+stepProgram :: Program -> IO ()
+stepProgram (Program bs inst)
+    = let (maybeSusp, is') = step (instantiate inst >> scheduler) is
+      in stepper maybeSusp is'
+    where 
+        genv = initialEnv bs
+        is = IState { _isGlobalEnv = genv, _isCurrentAID = 0 }
+
+--Pattern matches to see if execution is finished or not.
+--If not, then crudely waits for input before carrying on
+stepper :: Maybe (Stepped IState a)-> IState -> IO ()
+stepper maybeSusp is 
+    = case maybeSusp of
+        Just susp -> let (nextSusp, is') = step susp is 
+                     in do hSetBuffering stdout NoBuffering
+                           prettyPrintGlobalEnv (_isGlobalEnv is')
+                           input <- getLine 
+                           stepper nextSusp is'
+        Nothing   -> putStrLn "Done"
+
+--Somewhat ugly pretty printer, for testing
+prettyPrintGlobalEnv :: GlobalEnv -> IO ()
+prettyPrintGlobalEnv genv
+    = let nextActorString = "Next Available Actor ID: " ++ (show nextAvailableActor)
+          actorStringList = M.foldl (\a -> \str -> a ++ str) "" (M.map formatInstance actorList)
+      in do putStrLn "========================================"
+            putStrLn nextActorString
+            putStrLn actorStringList
+    where
+        nextAvailableActor = _geNextAvailableActor genv
+        actorList = _geActorInstances genv
+        
+
+formatInstance :: ActorInstance -> String
+formatInstance (ActorInstance id inbox (Behaviour name _ _ _) (LocalEnv bindings console) rec)
+    = "\nActor ID: " ++ (show id) ++ "\nInbox: " ++ (show inbox) ++ "\nBehaviour: " ++  (show name) ++ "\nBindings: " ++ (show (M.toList bindings)) ++ "\nConsole: " ++ (show console) ++ "\nReady to receive: " ++ (show rec) ++ "\n"
+
 --neads to evaluate either a message, or prereceive
 --will then call schedule again with new genv
 --works out next actor by getting ids, getting ready ones, and then picking one
---scheduler :: State IState ()
 scheduler :: MonadStepped IState m => m ()
 scheduler
     = do 
@@ -200,7 +237,6 @@ scheduler
                         isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) actorId
                         scheduler
 
---preReceive :: ActorId -> PreReceive -> State IState Value
 preReceive :: MonadStepped IState m => ActorId -> PreReceive -> m Value
 preReceive aid pr 
     = defineStep $ 
@@ -214,7 +250,6 @@ preReceive aid pr
 replaceActor :: ActorInstance -> ActorInstance -> Maybe ActorInstance
 replaceActor newActor oldActor = if oldActor == oldActor then Just newActor else Nothing
 
---receive :: ActorInstance -> [Receive] -> State IState Value
 receive :: MonadStepped IState m => ActorInstance -> [Receive] -> m Value
 receive ai rec 
     = defineStep $
@@ -269,14 +304,12 @@ getNames :: [Behaviour] -> [Name]
 getNames [] = []
 getNames ((Behaviour name _ _ _) : bs) = name : getNames bs
 
---instantiate :: Instantiation -> State IState ActorId
 instantiate :: MonadStepped IState m => Instantiation -> m ActorId
 instantiate (Instantiation name aps)
     = do
         ActorV firstId <- evalExp 0 (CreateE name aps) 
         return firstId
 
---getReady :: [ActorId] -> State IState [ActorId]
 getReady :: MonadStepped IState m => [ActorId] -> m [ActorId]
 getReady [] = return []
 getReady (aid : aids)
@@ -286,7 +319,6 @@ getReady (aid : aids)
         readyAids <- getReady aids
         return (if ready then aid : readyAids else readyAids)
 
---evalExp :: ActorId -> Exp -> State IState Value
 evalExp :: MonadStepped IState m => ActorId -> Exp -> m Value
 evalExp _ UnitE
     = return UnitV
@@ -347,7 +379,6 @@ evalExp aid (PrintE s e)
             isLocalEnv . leConsole %= (++ [s])
             evalExp aid e
 
---evalExps :: ActorId -> [Exp] -> State IState [Value]
 evalExps :: MonadStepped IState m => ActorId -> [Exp] -> m [Value]
 evalExps _ [] 
     = return []
@@ -358,7 +389,6 @@ evalExps aid (e : es)
         vs <- evalExps aid es
         return (v : vs)
         
---lookupName :: Name -> State IState Value
 lookupName :: MonadStepped IState m => Name -> m Value
 lookupName name 
     = do
@@ -366,14 +396,12 @@ lookupName name
         lenv <- use isLocalEnv
         return (M.findWithDefault (error "lookupName: invalid name") name bindings)
 
---lookupActorInstance :: ActorId -> State IState ActorInstance
 lookupActorInstance :: MonadStepped IState m => ActorId -> m ActorInstance
 lookupActorInstance aid 
     = do 
         actors <- use (isGlobalEnv . geActorInstances)
         return (M.findWithDefault (error "lookupActorInstance: invalid id") aid actors)
 
---lookupBehaviour :: Name -> State IState Behaviour
 lookupBehaviour :: MonadStepped IState m => Name -> m Behaviour
 lookupBehaviour name 
     = do 
