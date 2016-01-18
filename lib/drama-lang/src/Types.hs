@@ -1,12 +1,26 @@
+{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Types where 
 
+import Data.Aeson
+import GHC.Generics
+
 data Program
-    = Program [Behaviour] Instantiation
-    deriving (Eq, Show)
+    = Program 
+        { progBehaviours :: [Behaviour] 
+        , progInstantiation :: Instantiation
+        }
+    deriving (Generic, ToJSON, FromJSON, Eq, Show)
 
 data Behaviour
-    = Behaviour Name FormalParams PreReceive [Receive]
-    deriving (Eq, Show)
+    = Behaviour 
+        { behaviourName :: Name 
+        , behaviourFps :: FormalParams 
+        , behaviourPr :: PreReceive 
+        , behaviourRec :: [Receive]
+        }
+    deriving (Generic, ToJSON, FromJSON, Eq, Show)
 
 type FormalParams
     = [FormalParam]
@@ -33,8 +47,11 @@ type Name
     = String
 
 data Instantiation
-    = Instantiation Name ActualParams
-    deriving (Eq, Show)
+    = Instantiation 
+        { instantiationName :: Name 
+        , instantiationAps :: ActualParams
+        }
+    deriving (Generic, ToJSON, FromJSON, Eq, Show)
 
 data Exp 
     = UnitE 
@@ -45,4 +62,4 @@ data Exp
     | LetE Name Exp Exp
     | CreateE Name ActualParams
     | PrintE String Exp
-    deriving (Eq, Show)
+    deriving (Generic, ToJSON, FromJSON, Eq, Show)

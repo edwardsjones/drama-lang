@@ -3,10 +3,15 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveAnyClass        #-}
 
 module Interpreter where
 
 import qualified Data.Map.Strict as M
+import qualified Data.Aeson      as A
+import qualified Control.Applicative as C
+import GHC.Generics
 import System.Random 
 import System.IO
 import Control.Monad.State
@@ -20,7 +25,7 @@ data IState
         , _isCurrentAID :: ActorId
         }
 
-    deriving (Eq, Show)
+    deriving (Generic, Eq, Show)
 
 type ActorId
     = Int
@@ -32,7 +37,13 @@ data GlobalEnv
         , _geActorInstances :: M.Map ActorId ActorInstance
         } 
     
-    deriving (Eq, Show)
+    deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
+
+instance A.ToJSON (M.Map ActorId ActorInstance) where
+    toJSON map = A.toJSON (M.mapKeys (show) map)
+
+instance A.FromJSON (M.Map ActorId ActorInstance) where
+  parseJSON v = M.mapKeys (read :: String -> ActorId) <$> A.parseJSON v
 
 data ActorInstance
     = ActorInstance
@@ -43,7 +54,7 @@ data ActorInstance
         , _aiCanReceive :: Bool
         }
 
-    deriving (Eq, Show)
+    deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
 
 data LocalEnv
     = LocalEnv
@@ -51,13 +62,13 @@ data LocalEnv
         , _leConsole :: [String]
         }
 
-    deriving (Eq, Show)
+    deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
 
 data Value
     = UnitV
     | NumberV Int
     | ActorV ActorId
-    deriving (Eq, Show)
+    deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
 
 type Message
     = [Value]
@@ -175,6 +186,12 @@ stepProgram (Program bs inst)
     where 
         genv = initialEnv bs
         is = IState { _isGlobalEnv = genv, _isCurrentAID = 0 }
+
+--f to replace setBuffering etc. 
+--stepProgram should take a function as well, which will have one of these
+data Instruction
+    = Step
+    | Go
 
 --Pattern matches to see if execution is finished or not.
 --If not, then crudely waits for input before carrying on
