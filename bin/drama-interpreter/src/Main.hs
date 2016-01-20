@@ -10,4 +10,5 @@ main = do
     s <- getArgs
     fileContents <- readFile $ head s
     let ast = P.parseDrama $ L.alexScanTokens fileContents
-    I.stepProgram ast
+    mode <- getLine
+    if mode == "Go" then I.runProgram ast else I.stepProgram ast

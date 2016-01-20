@@ -27,6 +27,7 @@ Library
                     , lens
                     , mtl
                     , random
+                    , aeson
 
   Build-Tools:        alex
                     , happy
