@@ -1,0 +1,36 @@
+Name:                 drama-server
+Version:              0.1.0.0
+Synopsis:             The Drama server.
+Description:          Please see README.md.
+
+License:              AllRightsReserved
+Category:             Language
+Build-Type:           Simple
+
+Cabal-Version:        >= 1.10
+
+Executable drama-server
+  Hs-Source-Dirs:     src
+  Main-Is:            Main.hs
+
+  Other-Modules:      ServerTypes
+
+  Build-Depends:      drama-lang
+                    , scotty
+                    , bytestring
+                    , base
+                    , wai-cors
+                    , transformers
+                    , random
+                    , containers
+                    , aeson
+                    , wai-extra
+                    , stm
+                    , mtl
+                    , data-default-class
+                    , text
+
+  Build-Tools:        
+
+  Default-Language:   Haskell2010
+  Ghc-Options:        

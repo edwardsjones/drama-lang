@@ -24,7 +24,7 @@ data IState
         , _isCurrentAID :: ActorId
         }
 
-    deriving (Generic, Eq, Show)
+    deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
 
 type ActorId
     = Int
@@ -79,7 +79,7 @@ $(makeLenses ''GlobalEnv)
 $(makeLenses ''LocalEnv)
 $(makeLenses ''ActorInstance)
 
--- Takes a state and a starting value, and produces a function that takes 
+-- Takes a value, and produces a function that takes 
 -- a state and produces a SteppedResult and the state after
 data Stepped s a
     = Stepped (s -> (SteppedResult s a, s))

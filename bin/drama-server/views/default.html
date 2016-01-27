@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+
+    <title>Drama Language Interpreter</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="default.css">
+    
+    <!-- Bootstrap CDN -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+    <script src="drama.js"></script>
+</head>
+<html lang="en">
+    <div class="col-md-1"></div>
+        <div id="page-content" class="col-md-10">
+            <div class="page-header">
+                <h1>Drama Interpreter <small>An actor-based language</small></h1>
+            </div>
+            <div id="prog-controller" class="col-md-6">
+                <div id="prog-input" class="form-group">
+                    <textarea id="prog-textarea" class="program form-control" placeholder="Enter a .dr file here..."></textarea>
+                </div>
+
+                <div class="btn-group btn-group-lg" role="group" aria-label="...">
+                    <button type="button" class="start btn btn-default">Start</button> 
+                    <button type="button" class="step btn btn-default">Step</button> 
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="output-heading">
+                    <h2>Program Output</h2>
+                </div>
+                <div class="output-contents">
+                </div>
+            </div>
+        </div>
+    <div class="col-md-1"></div>
+</html>

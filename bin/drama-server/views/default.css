@@ -1,0 +1,11 @@
+html, body, #page-content {
+    height: 100%;
+}
+
+#prog-controller {
+    height: 70%;
+}
+
+#prog-input, #prog-textarea {
+    height: 100%;
+}

@@ -3,6 +3,7 @@ flags: {}
 
 packages:
 - 'bin/drama-interpreter'
+- 'bin/drama-server'
 
 - 'lib/drama-lang'
 
