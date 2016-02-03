@@ -9,3 +9,17 @@ html, body, #page-content {
 #prog-input, #prog-textarea {
     height: 100%;
 }
+
+#actor-id-info {
+    font-size: 14pt;
+    height: 40px;
+}
+
+#actor-info-id, #actor-info-beh, #actor-info-cr {
+    margin-bottom: 10px;
+}
+
+#actor-info-table {
+    margin-left: 0px;
+    margin-right: 0px;
+}

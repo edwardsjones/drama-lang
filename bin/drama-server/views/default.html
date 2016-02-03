@@ -2,41 +2,57 @@
 <head>
     <meta charset="utf-8">
 
-    <title>Drama Language Interpreter</title>
+    <title>Drama Interpreter</title>
 
     <!-- CSS -->
     <link rel="stylesheet" type="text/css" href="default.css">
     
     <!-- Bootstrap CDN -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
-    
+
     <!-- jQuery CDN -->
     <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
     <script src="drama.js"></script>
 </head>
 <html lang="en">
     <div class="col-md-1"></div>
-        <div id="page-content" class="col-md-10">
-            <div class="page-header">
-                <h1>Drama Interpreter <small>An actor-based language</small></h1>
+    <div id="page-content" class="col-md-10">
+        <div class="page-header">
+            <h1>Interactive Drama Interpreter <small>An actor-based language</small></h1>
+        </div>
+        <div id="prog-controller" class="col-md-6">
+            <div id="prog-input" class="form-group">
+                <textarea id="prog-textarea" class="program form-control" placeholder="Enter a .dr file here..."></textarea>
             </div>
-            <div id="prog-controller" class="col-md-6">
-                <div id="prog-input" class="form-group">
-                    <textarea id="prog-textarea" class="program form-control" placeholder="Enter a .dr file here..."></textarea>
-                </div>
 
-                <div class="btn-group btn-group-lg" role="group" aria-label="...">
-                    <button type="button" class="start btn btn-default">Start</button> 
-                    <button type="button" class="step btn btn-default">Step</button> 
-                </div>
+            <div class="btn-group btn-group-lg" role="group" aria-label="...">
+                <button type="button" class="start btn btn-default">Start</button> 
+                <button type="button" class="step btn btn-default">Step</button> 
             </div>
-            <div class="col-md-6">
-                <div class="output-heading">
-                    <h2>Program Output</h2>
-                </div>
-                <div class="output-contents">
+        </div>
+        <div class="col-md-6">
+            <div id="output-heading">
+                <h2>Program State</h2>
+            </div>
+            <div class="output-contents">
+                <div id="actor-id-info"> </div>
+                <div class="panel panel-default" id="actor-display">
+                    <div id="display-heading" class="panel-heading">Program state will appear here once execution begins.</div>
+                    <div class="panel-body">
+                        <div id="actor-info-id" class="col-md-4"> </div>
+                        <div id="actor-info-beh" class="col-md-4"> </div>
+                        <div id="actor-info-cr" class="col-md-4"> </div>
+                        <div id="actor-info-table" class="row">
+                            <div id="actor-inbox-table" class="col-md-6"> </div>
+                            <div id="actor-bindings-table" class="col-md-6"> </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
     <div class="col-md-1"></div>
 </html>
