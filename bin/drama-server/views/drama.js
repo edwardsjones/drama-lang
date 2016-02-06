@@ -5,6 +5,7 @@ $(function () {
     $(".start").on("click", function () {
         var progStr = $(".program").val();
         $.post(server + "/programs", progStr, function (data) {
+            $(".step").attr("disabled", false);
             ticket = data;
             pretty_print(ticket.state);
         });
@@ -13,9 +14,14 @@ $(function () {
     $(".step").on("click", function () {
         if (ticket.state) {
             $.post(server + "/step", JSON.stringify(ticket), function (data) {
-                ticket.state = data;
-                console.log(ticket.state);
-                pretty_print(ticket.state);
+                if (data === "done") {
+                    //blank out step button
+                    $(".step").attr("disabled", true);
+                } else {
+                    ticket.state = data.state;
+                    ticket.ready = data.ready;
+                    pretty_print(ticket.state);
+                }
             });
         } else {
             console.log("No state set.");
@@ -27,6 +33,7 @@ $(function () {
         var split_string = selected_string.split(" ");
         console.log(split_string[1]);
         populate_display(ticket.state["_isGlobalEnv"]["_geActorInstances"], parseInt(split_string[1]));
+        ticket.state["_isCurrentAID"] = parseInt(split_string[1]);
     });
 
     var pretty_print = function (state) {
@@ -35,10 +42,11 @@ $(function () {
         id_info_string = id_info_string + "<div class=\"col-md-6\">Next Available Actor ID: " + state["_isGlobalEnv"]["_geNextAvailableActor"] + "</div>";
 
 
-        var dropdown_string = "<div id=\"choose-actor\" class=\"dropdown\"> <button class=\"btn btn-default dropdown-toggle\" type=\"button\" id=\"dropdown-actor-menu\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"true\"> Choose actor instance... <span class=\"caret\"></span> </button> <ul class=\"dropdown-menu\" aria-labelledby=\"actor-dropdown\">" + populate_dropdown(state["_isGlobalEnv"]["_geActorInstances"]) + "</ul>";
+        var dropdown_string = "<div id=\"choose-actor\" class=\"dropdown\"> <button class=\"btn btn-default dropdown-toggle\" type=\"button\" id=\"dropdown-actor-menu\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"true\"> Choose actor instance... <span class=\"caret\"></span> </button> <ul class=\"dropdown-menu\" aria-labelledby=\"actor-dropdown\">" + populate_dropdown(state["_isGlobalEnv"]["_geActorInstances"]) + "</ul> <span title=\"The actor displayed here is the one that will execute next, assuming it is ready (ready actors are shown in green).\" class=\"glyphicon glyphicon-info-sign\" aria-hidden=\"true\"></span>";
 
         $("#actor-id-info").html(id_info_string);
         $("#display-heading").html(dropdown_string);
+        $(".glyphicon").tooltip({ placement: "left" });
         
         populate_display(state["_isGlobalEnv"]["_geActorInstances"], state["_isCurrentAID"]);
     };
@@ -72,7 +80,11 @@ $(function () {
 
         Object.keys(actors).forEach(function (key, index) {
             var actor_instance = actors[parseInt(key)];
-            dropdown_string = dropdown_string + "<li><a href=\"#\">Actor " + actor_instance["_aiId"] + " (" + actor_instance["_aiBehaviour"]["behaviourName"] + ") </a></li>"; 
+            if (ticket.ready.indexOf(actor_instance["_aiId"]) === -1) {
+                dropdown_string = dropdown_string + "<li><a href=\"#\">Actor " + actor_instance["_aiId"] + " (" + actor_instance["_aiBehaviour"]["behaviourName"] + ") </a></li>"; 
+            } else {
+                dropdown_string = dropdown_string + "<li class=\"bg-success\"><a href=\"#\">Actor " + actor_instance["_aiId"] + " (" + actor_instance["_aiBehaviour"]["behaviourName"] + ") </a></li>"; 
+            }
         });
 
         return dropdown_string;

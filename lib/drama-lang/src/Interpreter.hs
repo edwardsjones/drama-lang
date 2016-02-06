@@ -310,37 +310,43 @@ scheduler
             allIds = M.keys (_geActorInstances genv)
         ready <- getReady allIds
         if null ready 
+            
+            -- If no ready actors, then finished.
             then return ()
-            else do 
-                let toBeEval = head ready
-                actor <- lookupActorInstance toBeEval
-                let readyToReceive = _aiCanReceive actor
-                    actorId = _aiId actor
-                    Behaviour _ _ pr rec = _aiBehaviour actor
-                    lenv = _aiEnv actor
-                isCurrentAID .= actorId
-                if readyToReceive
-                    then do
-                        v <- receive actor rec
-                        newActor <- lookupActorInstance actorId 
-                        isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) actorId
-                        scheduler
-                    else do 
-                        v <- preReceive actorId pr
-                        newActor <- lookupActorInstance actorId 
-                        isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) actorId
-                        scheduler
+
+            -- Else, evaluate some expression. Step is defined here, so that
+            -- the user has the chance to change which actor executes next.
+            else defineStep $
+                do 
+                    is' <- get
+                    let actorID = checkID is' ready
+                    actor <- lookupActorInstance actorID
+                    let readyToReceive = _aiCanReceive actor
+                        actorId = _aiId actor
+                        Behaviour _ _ pr rec = _aiBehaviour actor
+                        lenv = _aiEnv actor
+                    isCurrentAID .= actorId
+                    if readyToReceive
+                        then do
+                            v <- receive actor rec
+                            newActor <- lookupActorInstance actorId 
+                            isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) actorId
+                            scheduler
+                        else do 
+                            v <- preReceive actorId pr
+                            newActor <- lookupActorInstance actorId 
+                            isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) actorId
+                            scheduler
 
 -- Evaluates the given PreReceive expression in the given ActorId's LocalEnv
 preReceive :: MonadStepped IState m => ActorId -> PreReceive -> m Value
 preReceive aid pr 
-    = defineStep $ 
-        do
-            v <- evalExp aid pr
-            actor <- lookupActorInstance aid
-            let newActor = actor { _aiCanReceive = True }
-            isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) (_aiId actor) 
-            return v
+    = do
+        v <- evalExp aid pr
+        actor <- lookupActorInstance aid
+        let newActor = actor { _aiCanReceive = True }
+        isGlobalEnv . geActorInstances %= M.update (replaceActor newActor) (_aiId actor) 
+        return v
 
 -- Used for updating actors in the GlobalEnv
 replaceActor :: ActorInstance -> ActorInstance -> Maybe ActorInstance
@@ -350,30 +356,29 @@ replaceActor newActor oldActor = if oldActor == oldActor then Just newActor else
 -- evaluates the next available message in that actor's inbox
 receive :: MonadStepped IState m => ActorInstance -> [Receive] -> m Value
 receive ai rec 
-    = defineStep $
-        do
-            -- Remove message from inbox, and update the actor instance
-            let (aps : msgs) = _aiInbox ai
-                ai' = ai { _aiInbox = msgs }
-            isGlobalEnv . geActorInstances %= M.update (replaceActor ai') (_aiId ai)
+    = do
+        -- Remove message from inbox, and update the actor instance
+        let (aps : msgs) = _aiInbox ai
+            ai' = ai { _aiInbox = msgs }
+        isGlobalEnv . geActorInstances %= M.update (replaceActor ai') (_aiId ai)
 
-            -- Find handler exp to use, and bind msg params
-            let (fps, handling) = matchArity rec aps
-                bindings = M.fromList (zip fps aps)
+        -- Find handler exp to use, and bind msg params
+        let (fps, handling) = matchArity rec aps
+            bindings = M.fromList (zip fps aps)
 
-            -- Store env withouth msg bindings for after
-            lenv <- use isLocalEnv
+        -- Store env withouth msg bindings for after
+        lenv <- use isLocalEnv
 
-            isLocalEnv . leBindings %= M.union bindings
-            v <- evalExp (_aiId ai) handling 
-            
-            -- Remove msg bindings
-            isLocalEnv . leBindings .= _leBindings lenv
-            lenv2 <- use isLocalEnv
-            let ai2 = ai' { _aiEnv = lenv2 }
-            isGlobalEnv . geActorInstances %= M.update (replaceActor ai2) (_aiId ai2)
+        isLocalEnv . leBindings %= M.union bindings
+        v <- evalExp (_aiId ai) handling 
+        
+        -- Remove msg bindings
+        isLocalEnv . leBindings .= _leBindings lenv
+        lenv2 <- use isLocalEnv
+        let ai2 = ai' { _aiEnv = lenv2 }
+        isGlobalEnv . geActorInstances %= M.update (replaceActor ai2) (_aiId ai2)
 
-            return v
+        return v
 
 -- Used for handling messages; messages are currently pattern matched on arity
 -- Takes the receive statements of an actor, and the message to be handled, 
@@ -416,9 +421,22 @@ getReady [] = return []
 getReady (aid : aids)
     = do
         actorInst <- lookupActorInstance aid
-        let ready = not (_aiCanReceive actorInst && null (_aiInbox actorInst))
         readyAids <- getReady aids
-        return (if ready then aid : readyAids else readyAids)
+        return (if isReady actorInst then aid : readyAids else readyAids)
+
+isReady :: ActorInstance -> Bool
+isReady ai = not (_aiCanReceive ai && null (_aiInbox ai))
+
+-- Used to check if the isCurrentAID is ready or not; this is the value
+-- changed by the server to indicate which actor to execute next. This
+-- function makes it so that the CLI still works (janky, but hey). 
+checkID :: IState -> [ActorId] -> ActorId
+checkID is ready
+    = if (elem currentAID ready) 
+        then currentAID
+        else head ready    
+    where 
+        currentAID = _isCurrentAID is
 
 -- Evaluates a given expression in the environment of the actor whose ID is 
 -- provided as argument, and returns the result
@@ -436,50 +454,46 @@ evalExp _ (VarE name)
     = lookupName name
 
 evalExp selfId (SendE name aps)
-    = defineStep $
-        do
-            msg <- evalExps selfId aps
-            ActorV otherId <- lookupName name
-            otherInst <- lookupActorInstance otherId
-            let newInbox = (_aiInbox otherInst) ++ [msg]
-                otherInst' = otherInst { _aiInbox = newInbox }
-            isGlobalEnv . geActorInstances %= M.insert otherId otherInst'
-            return UnitV
+    = do
+        msg <- evalExps selfId aps
+        ActorV otherId <- lookupName name
+        otherInst <- lookupActorInstance otherId
+        let newInbox = (_aiInbox otherInst) ++ [msg]
+            otherInst' = otherInst { _aiInbox = newInbox }
+        isGlobalEnv . geActorInstances %= M.insert otherId otherInst'
+        return UnitV
 
 evalExp aid (LetE name exp1 exp2)
-    = defineStep $
-        do
-            v <- evalExp aid exp1
-            isLocalEnv . leBindings %= M.insert name v
-            evalExp aid exp2
+    = do
+        v <- evalExp aid exp1
+        isLocalEnv . leBindings %= M.insert name v
+        evalExp aid exp2
 
 evalExp aid (CreateE name aps)
-    = defineStep $
-        do 
-            behaviour@(Behaviour _ fps _ _) <- lookupBehaviour name
-            newId <- isGlobalEnv . geNextAvailableActor <<%= (+1)
-            vs <- evalExps aid aps 
-            let newLocalEnv 
-                    = LocalEnv 
-                        { _leBindings = M.fromList (zip fps vs) 
-                        , _leConsole = []
-                        }
-                newActor 
-                    = ActorInstance
-                        { _aiId = newId
-                        , _aiInbox = []
-                        , _aiBehaviour = behaviour
-                        , _aiEnv = newLocalEnv
-                        , _aiCanReceive = False
-                        }
-            isGlobalEnv . geActorInstances %= M.insert newId newActor
-            return (ActorV newId)
+    = do 
+        behaviour@(Behaviour _ fps _ _) <- lookupBehaviour name
+        newId <- isGlobalEnv . geNextAvailableActor <<%= (+1)
+        vs <- evalExps aid aps 
+        let newLocalEnv 
+                = LocalEnv 
+                    { _leBindings = M.fromList (zip fps vs) 
+                    , _leConsole = []
+                    }
+            newActor 
+                = ActorInstance
+                    { _aiId = newId
+                    , _aiInbox = []
+                    , _aiBehaviour = behaviour
+                    , _aiEnv = newLocalEnv
+                    , _aiCanReceive = False
+                    }
+        isGlobalEnv . geActorInstances %= M.insert newId newActor
+        return (ActorV newId)
 
 evalExp aid (PrintE s e)
-    = defineStep $
-        do
-            isLocalEnv . leConsole %= (++ [s])
-            evalExp aid e
+    = do
+        isLocalEnv . leConsole %= (++ [s])
+        evalExp aid e
 
 evalExps :: MonadStepped IState m => ActorId -> [Exp] -> m [Value]
 evalExps _ [] 

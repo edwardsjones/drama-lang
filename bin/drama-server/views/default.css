@@ -23,3 +23,11 @@ html, body, #page-content {
     margin-left: 0px;
     margin-right: 0px;
 }
+
+#display-heading {
+    line-height: 2em;
+}
+
+.glyphicon {
+    float: right;
+}

@@ -58,7 +58,7 @@ app = do
         let progStr = B.unpack progByteStr
             ast = P.parseDrama $ L.alexScanTokens progStr
             (maybeSusp, is) = setupProgram ast
-            clientTicket = S.ClientTicket { S.ticketID = num, S.state = is }
+            clientTicket = S.ClientTicket { S.ticketID = num, S.state = is, S.ready = [0] }
         webM $ modify $ \as -> let newMap = M.insert num maybeSusp (serverTickets as)
                                in as { serverTickets = newMap }
         json clientTicket
@@ -71,9 +71,11 @@ app = do
             maybeSusp = ticketLookup suspID serverTix
         case maybeSusp of
             Just susp   ->  let (nextSusp, is') = I.step susp is
+                                readyList = getReadyActors is'
+                                newTicket = S.ClientTicket { S.ticketID = suspID, S.state = is', S.ready = readyList }
                             in do
                                 webM $ modify $ \as -> as { serverTickets = M.insert suspID nextSusp (serverTickets as) }
-                                json is'
+                                json newTicket
             Nothing     ->  do 
                                 liftIO $ print (M.size serverTix) 
                                 text "done"
@@ -95,3 +97,11 @@ ticketLookup id tickets
         Nothing     -> Nothing
     where 
         lookupResult = M.lookup id tickets
+
+getReadyActors :: I.IState -> [Int]
+getReadyActors is
+    = M.keys readyActors
+    where
+        genv = I._isGlobalEnv is
+        allActors = I._geActorInstances genv
+        readyActors = M.filter I.isReady allActors
