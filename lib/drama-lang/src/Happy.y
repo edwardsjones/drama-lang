@@ -18,6 +18,11 @@ import Types
     let         { LetTk }
     in          { InTk }
     self        { SelfTk }
+    true        { TrueTk }
+    false       { FalseTk }
+    if          { IfTk }
+    then        { ThenTk }
+    else        { ElseTk }
     int         { IntTk $$ }
     identifier  { IdentifierTk $$ }
     '='         { EqualsTk }
@@ -56,12 +61,16 @@ MsgAP           : {-- empty --}                             { [] }
 
 Exp             : '(' ')'                                   { UnitE }
                 | self                                      { SelfE }
+                | true                                      { BoolE True }
+                | false                                     { BoolE False }
                 | print identifier Exp                      { PrintE $2 $3 }
                 | identifier                                { VarE $1 }
                 | int                                       { NumberE $1 }
                 | send identifier '(' MsgAP ')'             { SendE $2 $4 }
                 | let identifier '=' Exp in Exp             { LetE $2 $4 $6 }
                 | create identifier '(' ActualParams ')'    { CreateE $2 $4 }
+                | if '(' Exp ')' then '{' Exp '}' else '{'
+                  Exp '}'                                   { IfE $3 $7 $11 }
 
 Instantiation   : create identifier '(' ActualParams ')'    { Instantiation $2 $4 }
 

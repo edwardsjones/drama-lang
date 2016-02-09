@@ -20,6 +20,11 @@ tokens :-
     let                             { \s -> LetTk }
     in                              { \s -> InTk }
     self                            { \s -> SelfTk }
+    true                            { \s -> TrueTk }
+    false                           { \s -> FalseTk }
+    if                              { \s -> IfTk }
+    then                            { \s -> ThenTk }
+    else                            { \s -> ElseTk }
     $digit+                         { \s -> IntTk (read s) }
     \=                              { \s -> EqualsTk } 
     $alpha [$alpha $digit \_ \']*   { \s -> IdentifierTk s }
@@ -31,26 +36,31 @@ tokens :-
     \}                              { \s -> CloseBraceTk }
     
 {
-data Token =
-    CreateTk            |
-    BehaviourTk         |
-    PrintTk             |
-    AddressTk           |
-    SendTk              |
-    ReceiveTk           |
-    DoneTk              |
-    LetTk               |
-    InTk                |
-    SelfTk              |
-    IntTk Int           | 
-    EqualsTk            |
-    IdentifierTk String |
-    OpenParTk           |
-    CloseParTk          |
-    CommaTk             |
-    HandleTk            |
-    OpenBraceTk         |
-    CloseBraceTk  
+data Token 
+    = CreateTk            
+    | BehaviourTk         
+    | PrintTk             
+    | AddressTk           
+    | SendTk              
+    | ReceiveTk           
+    | DoneTk              
+    | LetTk               
+    | InTk                
+    | SelfTk              
+    | TrueTk              
+    | FalseTk             
+    | IfTk                
+    | ThenTk              
+    | ElseTk              
+    | IntTk Int           
+    | EqualsTk            
+    | IdentifierTk String 
+    | OpenParTk           
+    | CloseParTk          
+    | CommaTk             
+    | HandleTk            
+    | OpenBraceTk         
+    | CloseBraceTk  
     deriving (Eq, Show)
 
 main = do

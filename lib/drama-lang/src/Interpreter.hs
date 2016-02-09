@@ -67,6 +67,7 @@ data LocalEnv
 
 data Value
     = UnitV
+    | BoolV Bool
     | NumberV Int
     | ActorV ActorId
     deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
@@ -447,6 +448,9 @@ evalExp _ UnitE
 evalExp aid SelfE 
     = return (ActorV aid)
 
+evalExp _ (BoolE b)
+    = return (BoolV b)
+
 evalExp _ (NumberE x) 
     = return (NumberV x)
 
@@ -494,6 +498,13 @@ evalExp aid (PrintE s e)
     = do
         isLocalEnv . leConsole %= (++ [s])
         evalExp aid e
+
+evalExp aid (IfE condition exp1 exp2)
+    = do
+        -- Get boolean of condition
+        conditionResult@(BoolV b) <- evalExp aid condition
+        -- exp1 if True, exp2 if False
+        if b then evalExp aid exp1 else evalExp aid exp2
 
 evalExps :: MonadStepped IState m => ActorId -> [Exp] -> m [Value]
 evalExps _ [] 

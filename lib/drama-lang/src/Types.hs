@@ -56,10 +56,12 @@ data Instantiation
 data Exp 
     = UnitE 
     | SelfE
+    | BoolE Bool
     | NumberE Int
     | VarE Name
     | SendE Name ActualParams
     | LetE Name Exp Exp
     | CreateE Name ActualParams
     | PrintE String Exp
+    | IfE Exp Exp Exp 
     deriving (Generic, ToJSON, FromJSON, Eq, Show)
