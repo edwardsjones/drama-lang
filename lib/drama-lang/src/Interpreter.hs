@@ -69,6 +69,7 @@ data Value
     = UnitV
     | BoolV Bool
     | NumberV Int
+    | StringV String
     | ActorV ActorId
     deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
 
@@ -449,10 +450,13 @@ evalExp aid SelfE
     = return (ActorV aid)
 
 evalExp _ (BoolE b)
-    = return (BoolV b)
+    = if b == "true" then return (BoolV True) else return (BoolV False)
 
 evalExp _ (NumberE x) 
     = return (NumberV x)
+
+evalExp _ (StringE s)
+    = return (StringV s)
 
 evalExp _ (VarE name)
     = lookupName name
@@ -505,6 +509,34 @@ evalExp aid (IfE condition exp1 exp2)
         conditionResult@(BoolV b) <- evalExp aid condition
         -- exp1 if True, exp2 if False
         if b then evalExp aid exp1 else evalExp aid exp2
+
+evalExp aid (EqualityE exp1 exp2 operator) 
+    = do
+        v1 <- evalExp aid exp1
+        v2 <- evalExp aid exp2
+        case (v1, v2) of
+            (NumberV n1, NumberV n2)    
+                -> case operator of
+                    "=="    -> return (BoolV (n1 == n2))
+                    "!="    -> return (BoolV (not (n1 == n2)))
+                    ">"     -> return (BoolV (n1 > n2))
+                    "<"     -> return (BoolV (n1 < n2))
+                    ">="    -> return (BoolV (n1 >= n2))
+                    "<="    -> return (BoolV (n1 <= n2))
+            _
+                -> case operator of
+                    "=="    -> return (BoolV (v1 == v2))
+                    "!="    -> return (BoolV (not (v1 == v2)))
+
+evalExp aid (ArithmeticE exp1 exp2 operator)
+    = do
+        v1@(NumberV n1) <- evalExp aid exp1
+        v2@(NumberV n2) <- evalExp aid exp2
+        case operator of
+            "-"     -> return (NumberV (n1 - n2))
+            "+"     -> return (NumberV (n1 + n2))
+            "/"     -> return (NumberV (div n1 n2)) 
+            "*"     -> return (NumberV (n1 * n2))
 
 evalExps :: MonadStepped IState m => ActorId -> [Exp] -> m [Value]
 evalExps _ [] 

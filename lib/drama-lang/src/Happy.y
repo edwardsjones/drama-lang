@@ -18,13 +18,15 @@ import Types
     let         { LetTk }
     in          { InTk }
     self        { SelfTk }
-    true        { TrueTk }
-    false       { FalseTk }
+    bools       { BoolTk $$ }
     if          { IfTk }
     then        { ThenTk }
     else        { ElseTk }
+    arith_op    { ArithmeticTk $$ }
+    eq          { EqualityTk $$ }
     int         { IntTk $$ }
     identifier  { IdentifierTk $$ }
+    str         { StringTk $$ }
     '='         { EqualsTk }
     '('         { OpenParTk }
     ')'         { CloseParTk }
@@ -61,11 +63,13 @@ MsgAP           : {-- empty --}                             { [] }
 
 Exp             : '(' ')'                                   { UnitE }
                 | self                                      { SelfE }
-                | true                                      { BoolE True }
-                | false                                     { BoolE False }
+                | bools                                     { BoolE $1 }
                 | print identifier Exp                      { PrintE $2 $3 }
                 | identifier                                { VarE $1 }
                 | int                                       { NumberE $1 }
+                | str                                       { StringE $1 }
+                | Exp eq Exp                                { EqualityE $1 $3 $2 }
+                | Exp arith_op Exp                          { ArithmeticE $1 $3 $2 }
                 | send identifier '(' MsgAP ')'             { SendE $2 $4 }
                 | let identifier '=' Exp in Exp             { LetE $2 $4 $6 }
                 | create identifier '(' ActualParams ')'    { CreateE $2 $4 }

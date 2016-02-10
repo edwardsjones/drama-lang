@@ -20,14 +20,26 @@ tokens :-
     let                             { \s -> LetTk }
     in                              { \s -> InTk }
     self                            { \s -> SelfTk }
-    true                            { \s -> TrueTk }
-    false                           { \s -> FalseTk }
+    \+                              { \s -> ArithmeticTk s }
+    \-                              { \s -> ArithmeticTk s }
+    \/                              { \s -> ArithmeticTk s }
+    \*                              { \s -> ArithmeticTk s }
+    true                            { \s -> BoolTk s }
+    false                           { \s -> BoolTk s }
     if                              { \s -> IfTk }
     then                            { \s -> ThenTk }
     else                            { \s -> ElseTk }
+    \=\=                            { \s -> EqualityTk s }
+    \!\=                            { \s -> EqualityTk s }
+    \>                              { \s -> EqualityTk s }
+    \<                              { \s -> EqualityTk s }
+    \>=                             { \s -> EqualityTk s }
+    \<=                             { \s -> EqualityTk s }
     $digit+                         { \s -> IntTk (read s) }
     \=                              { \s -> EqualsTk } 
     $alpha [$alpha $digit \_ \']*   { \s -> IdentifierTk s }
+    \" [$white $digit $alpha \! \£ \$ \% \^ \& \* \( \) \- \_ \? \> \< \@ \~]* \"
+                                    { \s -> StringTk (tail (init s)) }
     \(                              { \s -> OpenParTk }
     \)                              { \s -> CloseParTk }
     \,                              { \s -> CommaTk }
@@ -47,14 +59,16 @@ data Token
     | LetTk               
     | InTk                
     | SelfTk              
-    | TrueTk              
-    | FalseTk             
+    | BoolTk String
     | IfTk                
     | ThenTk              
     | ElseTk              
+    | EqualityTk String
+    | ArithmeticTk String
     | IntTk Int           
     | EqualsTk            
     | IdentifierTk String 
+    | StringTk String
     | OpenParTk           
     | CloseParTk          
     | CommaTk             
