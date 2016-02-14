@@ -31,7 +31,6 @@ $(function () {
     $("#display-heading").on("click", "li a", function (event) {
         var selected_string = event.target.outerText;
         var split_string = selected_string.split(" ");
-        console.log(split_string[1]);
         populate_display(ticket.state["_isGlobalEnv"]["_geActorInstances"], parseInt(split_string[1]));
         ticket.state["_isCurrentAID"] = parseInt(split_string[1]);
     });
@@ -97,7 +96,14 @@ $(function () {
 
         if (inbox.length !== 0) {
             for (var i = 0; i < inbox.length; i++) {
-                inbox_table = inbox_table + "<tr> <th>" + (i+1) + "</th> <td>" + inbox[i][0]["tag"] + " " + inbox[i][0]["contents"] + "</td> </tr>";
+                inbox_table = inbox_table + "<tr> <th>" + (i+1) + "</th> <td>";
+                for (var j = 0; j < inbox[i].length; j++) {
+                    inbox_table = inbox_table + inbox[i][j]["tag"] + " " + inbox[i][j]["contents"];
+                    if (j !== (inbox[i].length - 1)) {
+                        inbox_table = inbox_table + ", ";
+                    }
+                }
+                inbox_table = inbox_table + "</td> </tr>";
             }
         }
         inbox_table = inbox_table + "</tbody> </table>";

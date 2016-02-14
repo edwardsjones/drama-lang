@@ -387,7 +387,7 @@ receive ai rec
 -- and returns the receive statement to be used
 matchArity :: [Receive] -> Message -> Receive
 matchArity [] _ = error "matchArity: no matching cases for message"
-matchArity (r : rs) msg = if length r == length msg then r else matchArity rs msg
+matchArity (r@(fps, exp) : rs) msg = if length fps == length msg then r else matchArity rs msg
 
 -- Creates the initial GlobalEnv if provided with the list of behaviours
 initialEnv :: [Behaviour] -> GlobalEnv
