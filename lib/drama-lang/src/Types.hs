@@ -57,6 +57,7 @@ data Exp
     = UnitE 
     | SelfE
     | BoolE String
+    | ListE [Exp]
     | NumberE Int
     | StringE String
     | VarE Name

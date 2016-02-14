@@ -71,6 +71,7 @@ data Value
     | NumberV Int
     | StringV String
     | ActorV ActorId
+    | ListV [Value]
     deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
 
 type Message
@@ -460,6 +461,11 @@ evalExp _ (StringE s)
 
 evalExp _ (VarE name)
     = lookupName name
+
+evalExp aid (ListE exps)
+    = do
+        vals <- evalExps aid exps
+        return (ListV (reverse vals))
 
 evalExp selfId (SendE name aps)
     = do

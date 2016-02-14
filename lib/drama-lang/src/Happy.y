@@ -30,6 +30,8 @@ import Types
     '='         { EqualsTk }
     '('         { OpenParTk }
     ')'         { CloseParTk }
+    '['         { OpenListTk }
+    ']'         { CloseListTk }
     '{'         { OpenBraceTk }
     '}'         { CloseBraceTk }
     ','         { CommaTk }
@@ -63,6 +65,7 @@ MsgAP           : {-- empty --}                             { [] }
 
 Exp             : '(' ')'                                   { UnitE }
                 | self                                      { SelfE }
+                | ListExp                                   { ListE $1 }
                 | bools                                     { BoolE $1 }
                 | print identifier Exp                      { PrintE $2 $3 }
                 | identifier                                { VarE $1 }
@@ -75,6 +78,12 @@ Exp             : '(' ')'                                   { UnitE }
                 | create identifier '(' ActualParams ')'    { CreateE $2 $4 }
                 | if '(' Exp ')' then '{' Exp '}' else '{'
                   Exp '}'                                   { IfE $3 $7 $11 }
+
+ListExp         : '[' List ']'                              { $2 }
+
+List            : {-- empty --}                             { [] }
+                | Exp                                       { [$1] }
+                | List ',' Exp                              { $3 : $1 }
 
 Instantiation   : create identifier '(' ActualParams ')'    { Instantiation $2 $4 }
 

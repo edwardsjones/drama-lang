@@ -42,6 +42,8 @@ tokens :-
                                     { \s -> StringTk (tail (init s)) }
     \(                              { \s -> OpenParTk }
     \)                              { \s -> CloseParTk }
+    \[                              { \s -> OpenListTk }
+    \]                              { \s -> CloseListTk }
     \,                              { \s -> CommaTk }
     \-\>                            { \s -> HandleTk }
     \{                              { \s -> OpenBraceTk }
@@ -71,6 +73,8 @@ data Token
     | StringTk String
     | OpenParTk           
     | CloseParTk          
+    | OpenListTk
+    | CloseListTk
     | CommaTk             
     | HandleTk            
     | OpenBraceTk         

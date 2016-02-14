@@ -95,12 +95,29 @@ $(function () {
         var inbox_table = "Inbox <table class=\"table table-hover table-condensed\"> <thead> <tr> <th>#</th> <th>Value</th> </tr> </thead> <tbody>";
 
         if (inbox.length !== 0) {
+
             for (var i = 0; i < inbox.length; i++) {
+
                 inbox_table = inbox_table + "<tr> <th>" + (i+1) + "</th> <td>";
+
                 for (var j = 0; j < inbox[i].length; j++) {
-                    inbox_table = inbox_table + inbox[i][j]["tag"] + " " + inbox[i][j]["contents"];
-                    if (j !== (inbox[i].length - 1)) {
-                        inbox_table = inbox_table + ", ";
+
+                    // Need to make sure each of the values in the list is printed
+                    // No support for lists within lists yet though..
+                    if (inbox[i][j]["tag"] === "ListV") {
+                        inbox_table = inbox_table + inbox[i][j]["tag"] + " [";
+                        for (var k = 0; k < inbox[i][j]["contents"].length; k++) {
+                            inbox_table = inbox_table + inbox[i][j]["contents"][k]["contents"];
+                            if (k !== (inbox[i][j]["contents"].length - 1)) {
+                                inbox_table = inbox_table + ",";
+                            }
+                        }
+                        inbox_table = inbox_table + "]";
+                    } else {
+                        inbox_table = inbox_table + inbox[i][j]["tag"] + " " + inbox[i][j]["contents"];
+                        if (j !== (inbox[i].length - 1)) {
+                            inbox_table = inbox_table + ", ";
+                        }
                     }
                 }
                 inbox_table = inbox_table + "</td> </tr>";
