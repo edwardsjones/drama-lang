@@ -22,6 +22,7 @@ import Types
     if          { IfTk }
     then        { ThenTk }
     else        { ElseTk }
+    list_op     { ListOpTk $$ }
     arith_op    { ArithmeticTk $$ }
     eq          { EqualityTk $$ }
     int         { IntTk $$ }
@@ -34,6 +35,7 @@ import Types
     ']'         { CloseListTk }
     '{'         { OpenBraceTk }
     '}'         { CloseBraceTk }
+    ':'         { ConsTk }
     ','         { CommaTk }
     '->'        { HandleTk }
 
@@ -71,6 +73,9 @@ Exp             : '(' ')'                                   { UnitE }
                 | identifier                                { VarE $1 }
                 | int                                       { NumberE $1 }
                 | str                                       { StringE $1 }
+                | list_op Exp                               { ListOperationE $1 $2 }
+                | Exp ':' ListExp                           { ListE ($1 : $3) }
+                | Exp ':' identifier                        { ConsE $1 $3 }
                 | Exp eq Exp                                { EqualityE $1 $3 $2 }
                 | Exp arith_op Exp                          { ArithmeticE $1 $3 $2 }
                 | send identifier '(' MsgAP ')'             { SendE $2 $4 }
@@ -79,7 +84,7 @@ Exp             : '(' ')'                                   { UnitE }
                 | if '(' Exp ')' then '{' Exp '}' else '{'
                   Exp '}'                                   { IfE $3 $7 $11 }
 
-ListExp         : '[' List ']'                              { $2 }
+ListExp         : '[' List ']'                              { reverse $2 }
 
 List            : {-- empty --}                             { [] }
                 | Exp                                       { [$1] }

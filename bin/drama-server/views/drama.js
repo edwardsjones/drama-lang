@@ -1,12 +1,16 @@
 $(function () {
     var server = "http://localhost:5000";
     var ticket;
+    var all_states = [];
+    var done = false;
     
     $(".start").on("click", function () {
         var progStr = $(".program").val();
         $.post(server + "/programs", progStr, function (data) {
             $(".step").attr("disabled", false);
+            $(".back").attr("disabled", true);
             ticket = data;
+            all_states = [data.state];
             pretty_print(ticket.state);
         });
     });
@@ -15,16 +19,33 @@ $(function () {
         if (ticket.state) {
             $.post(server + "/step", JSON.stringify(ticket), function (data) {
                 if (data === "done") {
-                    //blank out step button
                     $(".step").attr("disabled", true);
+                    $(".back").attr("disabled", true);
                 } else {
+                    all_states.push(data.state);
                     ticket.state = data.state;
                     ticket.ready = data.ready;
                     pretty_print(ticket.state);
+                    $(".back").attr("disabled", false);
                 }
             });
         } else {
             console.log("No state set.");
+        }
+    });
+
+    $(".back").on("click", function () {
+        if (all_states.length <= 2) {
+            $(".back").attr("disabled", true);
+        } else {
+            $(".step").attr("disabled", false);
+            all_states.pop();
+            ticket.state = all_states[all_states.length - 1];
+            $.post(server + "/back", JSON.stringify(ticket), function (data) {
+                ticket.state = data.state;
+                ticket.ready = data.ready;
+                pretty_print(ticket.state);
+            });
         }
     });
 

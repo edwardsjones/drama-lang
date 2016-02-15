@@ -58,8 +58,10 @@ data Exp
     | SelfE
     | BoolE String
     | ListE [Exp]
+    | ConsE Exp String
     | NumberE Int
     | StringE String
+    | ListOperationE String Exp
     | VarE Name
     | ArithmeticE Exp Exp String
     | SendE Name ActualParams

@@ -465,7 +465,24 @@ evalExp _ (VarE name)
 evalExp aid (ListE exps)
     = do
         vals <- evalExps aid exps
-        return (ListV (reverse vals))
+        return (ListV vals)
+
+evalExp aid (ListOperationE op xs)
+    = do
+        vs@(ListV l) <- evalExp aid xs
+        case op of
+            "tail"  ->  return (ListV (tail l))
+            "init"  ->  return (ListV (init l))
+            "head"  ->  return (head l)
+            "last"  ->  return (last l)
+            "length"->  return (NumberV (length l))
+
+evalExp aid (ConsE exp var)
+    = do
+        xs@(ListV v) <- lookupName var
+        val <- evalExp aid exp
+        return (ListV (val : v))
+        
 
 evalExp selfId (SendE name aps)
     = do

@@ -20,6 +20,11 @@ tokens :-
     let                             { \s -> LetTk }
     in                              { \s -> InTk }
     self                            { \s -> SelfTk }
+    head                            { \s -> ListOpTk s }
+    tail                            { \s -> ListOpTk s }
+    init                            { \s -> ListOpTk s }
+    last                            { \s -> ListOpTk s }
+    length                          { \s -> ListOpTk s }
     \+                              { \s -> ArithmeticTk s }
     \-                              { \s -> ArithmeticTk s }
     \/                              { \s -> ArithmeticTk s }
@@ -44,6 +49,7 @@ tokens :-
     \)                              { \s -> CloseParTk }
     \[                              { \s -> OpenListTk }
     \]                              { \s -> CloseListTk }
+    \:                              { \s -> ConsTk }
     \,                              { \s -> CommaTk }
     \-\>                            { \s -> HandleTk }
     \{                              { \s -> OpenBraceTk }
@@ -61,6 +67,7 @@ data Token
     | LetTk               
     | InTk                
     | SelfTk              
+    | ListOpTk String
     | BoolTk String
     | IfTk                
     | ThenTk              
@@ -75,6 +82,7 @@ data Token
     | CloseParTk          
     | OpenListTk
     | CloseListTk
+    | ConsTk
     | CommaTk             
     | HandleTk            
     | OpenBraceTk         

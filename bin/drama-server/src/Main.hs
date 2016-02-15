@@ -24,7 +24,7 @@ import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
 newtype AppState 
-    = AppState { serverTickets :: M.Map Int (Maybe (I.Stepped I.IState ())) }
+    = AppState { serverTickets :: M.Map Int [(Maybe (I.Stepped I.IState ()))] }
 
 instance Default AppState where
     def 
@@ -59,7 +59,7 @@ app = do
             ast = P.parseDrama $ L.alexScanTokens progStr
             (maybeSusp, is) = setupProgram ast
             clientTicket = S.ClientTicket { S.ticketID = num, S.state = is, S.ready = [0] }
-        webM $ modify $ \as -> let newMap = M.insert num maybeSusp (serverTickets as)
+        webM $ modify $ \as -> let newMap = M.insert num [maybeSusp] (serverTickets as)
                                in as { serverTickets = newMap }
         json clientTicket
 
@@ -74,11 +74,22 @@ app = do
                                 readyList = getReadyActors is'
                                 newTicket = S.ClientTicket { S.ticketID = suspID, S.state = is', S.ready = readyList }
                             in do
-                                webM $ modify $ \as -> as { serverTickets = M.insert suspID nextSusp (serverTickets as) }
+                                --change list to have most recent susp first
+                                webM $ modify $ \as -> as { serverTickets = M.insertWith (++) suspID [nextSusp] (serverTickets as) }
                                 json newTicket
             Nothing     ->  do 
                                 liftIO $ print (M.size serverTix) 
                                 text "done"
+
+    -- Roll back the susps one step
+    post "/back" $ do
+        ticket <- jsonData :: ActionT Text WebM S.ClientTicket
+        let suspID = S.ticketID ticket
+            is = S.state ticket
+            readyList = getReadyActors is
+            newTicket = S.ClientTicket { S.ticketID = suspID, S.state = is, S.ready = readyList }
+        webM $ modify $ \as -> as { serverTickets = M.adjust tail suspID (serverTickets as) }
+        json newTicket 
 
 -- Takes a Program, and returns a Maybe (Stepped s a) and the state after 
 -- the first actor has been instantiated
@@ -90,12 +101,13 @@ setupProgram (T.Program bs inst)
         is = I.IState { I._isGlobalEnv = genv, I._isCurrentAID = 0 }
         firstStepped = (I.instantiate inst >> I.scheduler)
 
-ticketLookup :: Int -> M.Map Int (Maybe (I.Stepped I.IState ())) -> Maybe (I.Stepped I.IState ())
+ticketLookup :: Int -> M.Map Int [(Maybe (I.Stepped I.IState ()))] -> Maybe (I.Stepped I.IState ())
 ticketLookup id tickets
     = case lookupResult of
-        Just susp   -> susp
+        Just susps  -> head susps
         Nothing     -> Nothing
     where 
+        -- produces a Maybe [Maybe _]
         lookupResult = M.lookup id tickets
 
 getReadyActors :: I.IState -> [Int]
