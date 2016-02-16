@@ -121,7 +121,9 @@ $(function () {
 
                 inbox_table = inbox_table + "<tr> <th>" + (i+1) + "</th> <td>";
 
-                for (var j = 0; j < inbox[i].length; j++) {
+                // Iterate through the messages backwards; due to how the program is parsed, 
+                // values that are lists in the Haskell interpreter are reversed. 
+                for (var j = inbox[i].length - 1; j >= 0; j--) {
 
                     // Need to make sure each of the values in the list is printed
                     // No support for lists within lists yet though..

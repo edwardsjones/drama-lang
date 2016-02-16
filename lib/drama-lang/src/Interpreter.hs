@@ -362,7 +362,9 @@ receive ai rec
     = do
         -- Remove message from inbox, and update the actor instance
         let (aps : msgs) = _aiInbox ai
+            --ai' is the actor without the msg about to be handled
             ai' = ai { _aiInbox = msgs }
+            aid = _aiId ai
         isGlobalEnv . geActorInstances %= M.update (replaceActor ai') (_aiId ai)
 
         -- Find handler exp to use, and bind msg params
@@ -373,13 +375,15 @@ receive ai rec
         lenv <- use isLocalEnv
 
         isLocalEnv . leBindings %= M.union bindings
-        v <- evalExp (_aiId ai) handling 
-        
+        v <- evalExp aid handling
+
+        ai'' <- lookupActorInstance aid
+
         -- Remove msg bindings
         isLocalEnv . leBindings .= _leBindings lenv
         lenv2 <- use isLocalEnv
-        let ai2 = ai' { _aiEnv = lenv2 }
-        isGlobalEnv . geActorInstances %= M.update (replaceActor ai2) (_aiId ai2)
+        let ai''' = ai'' { _aiEnv = lenv2 }
+        isGlobalEnv . geActorInstances %= M.update (replaceActor ai''') (_aiId ai''')
 
         return v
 
@@ -504,7 +508,7 @@ evalExp aid (CreateE name aps)
     = do 
         behaviour@(Behaviour _ fps _ _) <- lookupBehaviour name
         newId <- isGlobalEnv . geNextAvailableActor <<%= (+1)
-        vs <- evalExps aid aps 
+        vs <- evalExps aid aps
         let newLocalEnv 
                 = LocalEnv 
                     { _leBindings = M.fromList (zip fps vs) 
