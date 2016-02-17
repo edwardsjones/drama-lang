@@ -49,11 +49,30 @@ $(function () {
         }
     });
 
+    // Changes the isCurrentAID when an actor is selected in the dropdown.
     $("#display-heading").on("click", "li a", function (event) {
         var selected_string = event.target.outerText;
         var split_string = selected_string.split(" ");
         populate_display(ticket.state["_isGlobalEnv"]["_geActorInstances"], parseInt(split_string[1]));
         ticket.state["_isCurrentAID"] = parseInt(split_string[1]);
+    });
+
+    // Make tabs function as tabs instead of moving elements on the page. 
+    $(document).delegate('#prog-textarea', 'keydown', function(e) {
+        var keyCode = e.keyCode || e.which;
+
+        if (keyCode == 9) {
+            e.preventDefault();
+            var start = $(this).get(0).selectionStart;
+            var end = $(this).get(0).selectionEnd;
+
+            // set textarea value to: text before caret + four spaces + text after caret
+            $(this).val($(this).val().substring(0, start) + "    " + $(this).val().substring(end));
+
+            // put caret at right position again
+            $(this).get(0).selectionStart =
+            $(this).get(0).selectionEnd = start + 4;
+        }
     });
 
     var pretty_print = function (state) {
@@ -73,13 +92,17 @@ $(function () {
 
 
     var populate_display = function (actors, aid) {
+
         if (aid === 0) {
             $("#actor-info-id").html("Actor ID: " + aid);
             $("#actor-info-beh").html("Behaviour: undefined");
             $("#actor-info-cr").html("Can Receive: undefined");
+            reset_table();
             return;
         }
+
         var actor;
+
         Object.keys(actors).forEach(function (key, index) {
             var actor_instance = actors[parseInt(key)];
             if (actors[parseInt(key)]["_aiId"] === aid) {
@@ -142,6 +165,9 @@ $(function () {
                             inbox_table = inbox_table + ", ";
                         }
                     }
+                    if (j > 0) {
+                        inbox_table = inbox_table + ", ";
+                    }
                 }
                 inbox_table = inbox_table + "</td> </tr>";
             }
@@ -160,5 +186,15 @@ $(function () {
         $("#actor-inbox-table").html(inbox_table);
         $("#actor-bindings-table").html(bindings_table);
         
+    };
+
+    var reset_table = function () {
+
+        var inbox_table = "Inbox <table class=\"table table-hover table-condensed\"> <thead> <tr> <th>#</th> <th>Value</th> </tr> </thead> <tbody> </tbody> </table>";
+        var bindings_table = "Bindings <table class=\"table table-hover table-condensed\"> <thead> <tr> <th> Name </th> <th> Value </th> </tr> </thead> <tbody> </tbody> </table>";
+
+        $("#actor-inbox-table").html(inbox_table);
+        $("#actor-bindings-table").html(bindings_table);
+
     };
 });

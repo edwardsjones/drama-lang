@@ -2,6 +2,13 @@ html, body, #page-content {
     height: 100%;
 }
 
+#prog-textarea {
+    background-color: #323232;
+    border: 1px solid #000;
+    color: #bdbdbd;
+    font-family: "Lucida Console", Courier, monospace;
+}
+
 #prog-controller {
     height: 70%;
 }
