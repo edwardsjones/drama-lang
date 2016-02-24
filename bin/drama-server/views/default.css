@@ -38,3 +38,8 @@ html, body, #page-content {
 .glyphicon {
     float: right;
 }
+
+.save {
+    position: relative;
+    top: -7px;
+}
