@@ -43,7 +43,7 @@ tokens :-
     $digit+                         { \s -> IntTk (read s) }
     \=                              { \s -> EqualsTk } 
     $alpha [$alpha $digit \_ \']*   { \s -> IdentifierTk s }
-    \" [$white $digit $alpha \! \£ \$ \% \^ \& \* \( \) \- \_ \? \> \< \@ \~]* \"
+    \" [$white $digit $alpha \, \. \! \£ \$ \% \^ \& \* \( \) \- \_ \? \> \< \@ \~]* \"
                                     { \s -> StringTk (tail (init s)) }
     \(                              { \s -> OpenParTk }
     \)                              { \s -> CloseParTk }

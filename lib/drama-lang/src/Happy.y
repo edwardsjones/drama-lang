@@ -67,12 +67,12 @@ MsgAP           : {-- empty --}                             { [] }
 
 Exp             : '(' ')'                                   { UnitE }
                 | self                                      { SelfE }
-                | ListExp                                   { ListE $1 }
                 | bools                                     { BoolE $1 }
                 | print identifier Exp                      { PrintE $2 $3 }
                 | identifier                                { VarE $1 }
                 | int                                       { NumberE $1 }
                 | str                                       { StringE $1 }
+                | ListExp                                   { ListE $1 }
                 | list_op Exp                               { ListOperationE $1 $2 }
                 | Exp ':' ListExp                           { ListE ($1 : $3) }
                 | Exp ':' identifier                        { ConsE $1 $3 }
@@ -87,8 +87,13 @@ Exp             : '(' ')'                                   { UnitE }
 ListExp         : '[' List ']'                              { reverse $2 }
 
 List            : {-- empty --}                             { [] }
-                | Exp                                       { [$1] }
-                | List ',' Exp                              { $3 : $1 }
+                | Listable                                  { [$1] }
+                | List ',' Listable                         { $3 : $1 }
+
+Listable        : bools                                     { BoolE $1 }
+                | int                                       { NumberE $1 }
+                | str                                       { StringE $1 }
+                | '(' ')'                                   { UnitE }
 
 Instantiation   : create identifier '(' ActualParams ')'    { Instantiation $2 $4 }
 
