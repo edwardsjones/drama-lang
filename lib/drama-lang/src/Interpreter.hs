@@ -72,6 +72,7 @@ data Value
     | StringV String
     | ActorV ActorId
     | ListV [Value]
+    | EncryptedV Value String
     deriving (Generic, A.ToJSON, A.FromJSON, Eq, Show)
 
 type Message
@@ -564,6 +565,16 @@ evalExp aid (ArithmeticE exp1 exp2 operator)
             "+"     -> return (NumberV (n1 + n2))
             "/"     -> return (NumberV (div n1 n2)) 
             "*"     -> return (NumberV (n1 * n2))
+
+evalExp aid (EncryptE var key)
+    = do
+        value <- lookupName var
+        return (EncryptedV value key)
+
+evalExp _ (DecryptE enc givenKey)
+    = do
+        encValue@(EncryptedV value actualKey) <- lookupName enc
+        if givenKey == actualKey then return value else error "Wrong key used to decrypt."
 
 evalExps :: MonadStepped IState m => ActorId -> [Exp] -> m [Value]
 evalExps _ [] 

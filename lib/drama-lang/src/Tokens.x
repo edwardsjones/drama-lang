@@ -25,6 +25,8 @@ tokens :-
     init                            { \s -> ListOpTk s }
     last                            { \s -> ListOpTk s }
     length                          { \s -> ListOpTk s }
+    encrypt                         { \s -> EncryptTk }
+    decrypt                         { \s -> DecryptTk }
     \+                              { \s -> ArithmeticTk s }
     \-                              { \s -> ArithmeticTk s }
     \/                              { \s -> ArithmeticTk s }
@@ -72,6 +74,8 @@ data Token
     | IfTk                
     | ThenTk              
     | ElseTk              
+    | EncryptTk
+    | DecryptTk
     | EqualityTk String
     | ArithmeticTk String
     | IntTk Int           

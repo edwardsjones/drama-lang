@@ -61,6 +61,8 @@ data Exp
     | ConsE Exp String
     | NumberE Int
     | StringE String
+    | EncryptE Name String
+    | DecryptE Name String
     | ListOperationE String Exp
     | VarE Name
     | ArithmeticE Exp Exp String

@@ -22,6 +22,8 @@ import Types
     if          { IfTk }
     then        { ThenTk }
     else        { ElseTk }
+    encrypt     { EncryptTk }
+    decrypt     { DecryptTk }
     list_op     { ListOpTk $$ }
     arith_op    { ArithmeticTk $$ }
     eq          { EqualityTk $$ }
@@ -72,6 +74,8 @@ Exp             : '(' ')'                                   { UnitE }
                 | identifier                                { VarE $1 }
                 | int                                       { NumberE $1 }
                 | str                                       { StringE $1 }
+                | encrypt identifier str                    { EncryptE $2 $3 }
+                | decrypt identifier str                    { DecryptE $2 $3 }
                 | ListExp                                   { ListE $1 }
                 | list_op Exp                               { ListOperationE $1 $2 }
                 | Exp ':' ListExp                           { ListE ($1 : $3) }
