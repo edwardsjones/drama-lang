@@ -74,7 +74,7 @@ Exp             : '(' ')'                                   { UnitE }
                 | identifier                                { VarE $1 }
                 | int                                       { NumberE $1 }
                 | str                                       { StringE $1 }
-                | encrypt identifier str                    { EncryptE $2 $3 }
+                | encrypt Exp str                           { EncryptE $2 $3 }
                 | decrypt identifier str                    { DecryptE $2 $3 }
                 | ListExp                                   { ListE $1 }
                 | list_op Exp                               { ListOperationE $1 $2 }

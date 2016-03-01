@@ -35,6 +35,11 @@ html, body, #page-content {
     line-height: 2em;
 }
 
+.enckeys {
+    display: table-cell;
+    vertical-align: middle;
+}
+
 .glyphicon {
     float: right;
 }

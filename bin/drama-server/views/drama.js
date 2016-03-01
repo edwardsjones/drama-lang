@@ -200,6 +200,13 @@ $(function () {
                             input_val = input_val.slice(1, -1);
                             valid = true;
                         }
+                    } else if (selected_type === "EncryptedV") {
+                        input_val = $("#key"+ n).val();
+                        if (is_valid(selected_type, input_val)) {
+                            input_val = input_val.match(valid_string_re)[0];
+                            input_val = input_val.slice(1, -1);
+                            valid = true;
+                        }
                     } else if (selected_type === "NumberV" || selected_type === "ActorV") {
                         input_val = $(input_id).val();
                         if (is_valid(selected_type, input_val)) {
@@ -226,6 +233,8 @@ $(function () {
                                 new_list["contents"].push(get_list_element(input_val, p));
                             }
                             ticket.state["_isGlobalEnv"]["_geActorInstances"][actor_id]["_aiInbox"][msg_no - 1][n] = new_list;
+                        } else if (selected_type === "EncryptedV") {
+                            ticket.state["_isGlobalEnv"]["_geActorInstances"][actor_id]["_aiInbox"][msg_no - 1][n]["contents"][1] = input_val;
                         } else {
                             ticket.state["_isGlobalEnv"]["_geActorInstances"][actor_id]["_aiInbox"][msg_no - 1][n]["tag"] = selected_type;
                             ticket.state["_isGlobalEnv"]["_geActorInstances"][actor_id]["_aiInbox"][msg_no - 1][n]["contents"] = input_val;
@@ -262,7 +271,7 @@ $(function () {
             } else {
                 return false;
             }
-        } else if (type === "StringV") {
+        } else if (type === "StringV" || type === "EncryptedV") {
             var matched_string = input.match(valid_string_re);
             if (matched_string) {
                 return true;
@@ -307,8 +316,10 @@ $(function () {
         } else if (msg[tuple]["tag"] === "BoolV") {
             //radio buttons; true or false
             contents = contents + "<div id=\"input"+tuple+"\"><input type=\"radio\" id=\"true\" name=\"bool"+tuple+"\" value=\"True\"><label for=\"true\"> True </label><input type=\"radio\" id=\"false\" name=\"bool"+tuple+"\" value=\"False\"><label for=\"false\"> False </label></div>";
+        } else if (msg[tuple]["tag"] === "EncryptedV") {
+            contents = contents + "<div id=\"input"+tuple+"\"><textarea id=\"key"+tuple+"\" cols=\"8\" rows=\"1\">New key</textarea></div>";
         } else {
-            contents = contents + "<textarea id=\"input"+tuple+"\" cols=\"5\" rows=\"1\"></textarea>";
+            contents = contents + "<textarea id=\"input"+tuple+"\" cols=\"15\" rows=\"1\"></textarea>";
         }
         contents = contents + "</div>";
         return contents;
@@ -391,6 +402,8 @@ $(function () {
                             }
                         }
                         inbox_table = inbox_table + "]";
+                    } else if (inbox[i][j]["tag"] === "EncryptedV") {
+                        inbox_table = inbox_table + "EncryptedV (Key " + inbox[i][j]["contents"][1] + ")";
                     } else {
                         inbox_table = inbox_table + inbox[i][j]["tag"] + " ";
 
@@ -435,8 +448,10 @@ $(function () {
             $("#" + element_id).replaceWith("<div id=\""+element_id+"\">()</div>");
         } else if (selected_text === "BoolV") {
             $("#" + element_id).replaceWith("<div id=\""+element_id+"\"><input type=\"radio\" id=\"true\" name=\"bool"+tuple_no+"\" value=\"True\"><label for=\"true\"> True </label><input type=\"radio\" id=\"false\" name=\"bool"+tuple_no+"\" value=\"False\"><label for=\"false\"> False </label></div>");
+        } else if (selected_text === "EncryptedV") {
+            $("#" + element_id).replaceWith("<div class=\"enckeys\" id=\""+element_id+"\"><textarea id=\"key"+tuple_no+"\" cols=\"15\" rows=\"1\">New key</textarea></label></div>");
         } else {
-            $("#" + element_id).replaceWith("<textarea id=\""+element_id+"\" cols=\"5\" rows=\"1\"></textarea>");
+            $("#" + element_id).replaceWith("<textarea id=\""+element_id+"\" cols=\"8\" rows=\"1\"></textarea>");
         }
     }
 });

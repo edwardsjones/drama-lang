@@ -566,9 +566,9 @@ evalExp aid (ArithmeticE exp1 exp2 operator)
             "/"     -> return (NumberV (div n1 n2)) 
             "*"     -> return (NumberV (n1 * n2))
 
-evalExp aid (EncryptE var key)
+evalExp aid (EncryptE exp key)
     = do
-        value <- lookupName var
+        value <- evalExp aid exp
         return (EncryptedV value key)
 
 evalExp _ (DecryptE enc givenKey)
