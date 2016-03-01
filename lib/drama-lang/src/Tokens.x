@@ -10,6 +10,7 @@ $alpha = [a-zA-Z]
 tokens :-
     
     $white+                         ;
+    \/\/ [.]* \n                    ;
     create                          { \s -> CreateTk }
     behaviour                       { \s -> BehaviourTk }
     print                           { \s -> PrintTk }
