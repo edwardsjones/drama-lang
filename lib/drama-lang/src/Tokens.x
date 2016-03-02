@@ -28,6 +28,13 @@ tokens :-
     length                          { \s -> ListOpTk s }
     encrypt                         { \s -> EncryptTk }
     decrypt                         { \s -> DecryptTk }
+    StringV                         { \s -> TypeTk s }
+    NumberV                         { \s -> TypeTk s }
+    BoolV                           { \s -> TypeTk s }
+    EncryptedV                      { \s -> TypeTk s }
+    UnitV                           { \s -> TypeTk s }
+    ActorV                          { \s -> TypeTk s }
+    ListV                           { \s -> TypeTk s }
     \+                              { \s -> ArithmeticTk s }
     \-                              { \s -> ArithmeticTk s }
     \/                              { \s -> ArithmeticTk s }
@@ -72,6 +79,7 @@ data Token
     | SelfTk              
     | ListOpTk String
     | BoolTk String
+    | TypeTk String
     | IfTk                
     | ThenTk              
     | ElseTk              

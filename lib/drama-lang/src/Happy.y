@@ -30,6 +30,7 @@ import Types
     int         { IntTk $$ }
     identifier  { IdentifierTk $$ }
     str         { StringTk $$ }
+    type        { TypeTk $$ }
     '='         { EqualsTk }
     '('         { OpenParTk }
     ')'         { CloseParTk }
@@ -60,8 +61,8 @@ Handling        : '(' MsgFP ')' '->' Exp                    { [($2, $5)] }
                 | Handling '(' MsgFP ')' '->' Exp           { ($3, $6) : $1 }
 
 MsgFP           : {-- empty --}                             { [] }
-                | FormalParam                               { [$1] }
-                | MsgFP ',' FormalParam                     { $3 : $1 }
+                | type FormalParam                          { [($1, $2)] }
+                | MsgFP ',' type FormalParam                { ($3, $4) : $1 }
 
 MsgAP           : {-- empty --}                             { [] }
                 | ActualParam                               { [$1] }
@@ -74,8 +75,8 @@ Exp             : '(' ')'                                   { UnitE }
                 | identifier                                { VarE $1 }
                 | int                                       { NumberE $1 }
                 | str                                       { StringE $1 }
-                | encrypt Exp str                           { EncryptE $2 $3 }
-                | decrypt identifier str                    { DecryptE $2 $3 }
+                | encrypt Exp Exp                           { EncryptE $2 $3 }
+                | decrypt identifier Exp                    { DecryptE $2 $3 }
                 | ListExp                                   { ListE $1 }
                 | list_op Exp                               { ListOperationE $1 $2 }
                 | Exp ':' ListExp                           { ListE ($1 : $3) }

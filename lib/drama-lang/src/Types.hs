@@ -34,8 +34,11 @@ type PreReceive
 type Receive
     = (Pat, Exp)
 
+--Receive is now a tuple
+--fst = [Type, FormalParam]
+--snd = Exp
 type Pat
-    = FormalParams
+    = [(Type, FormalParam)]
 
 type ActualParams
     = [ActualParam]
@@ -44,6 +47,9 @@ type ActualParam
     = Exp
 
 type Name
+    = String
+
+type Type
     = String
 
 data Instantiation
@@ -61,8 +67,8 @@ data Exp
     | ConsE Exp String
     | NumberE Int
     | StringE String
-    | EncryptE Exp String
-    | DecryptE Name String
+    | EncryptE Exp Exp
+    | DecryptE Name Exp
     | ListOperationE String Exp
     | VarE Name
     | ArithmeticE Exp Exp String

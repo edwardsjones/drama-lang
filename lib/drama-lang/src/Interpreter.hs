@@ -369,7 +369,8 @@ receive ai rec
         isGlobalEnv . geActorInstances %= M.update (replaceActor ai') (_aiId ai)
 
         -- Find handler exp to use, and bind msg params
-        let (fps, handling) = matchArity rec aps
+        let (pats, handling) = matchMsg rec aps
+            fps = map snd pats
             bindings = M.fromList (zip fps aps)
 
         -- Store env withouth msg bindings for after
@@ -388,12 +389,35 @@ receive ai rec
 
         return v
 
--- Used for handling messages; messages are currently pattern matched on arity
--- Takes the receive statements of an actor, and the message to be handled, 
--- and returns the receive statement to be used
-matchArity :: [Receive] -> Message -> Receive
-matchArity [] _ = error "matchArity: no matching cases for message"
-matchArity (r@(fps, exp) : rs) msg = if length fps == length msg then r else matchArity rs msg
+-- [Receive] = [(Pat, Exp)] = [([Type, FormalParam], Exp)]
+-- Receive = (Pat, Exp)
+-- Pat = [(Type, FormalParam)]
+-- get list of types from pat
+-- check each is consistent with msg
+-- if not, move on to next pat
+-- Used for finding which handling statement to use. Checks each of the msg 
+-- tuple types and compares them to the types specified in the Receive. If none
+-- are found to match, the msg is dropped.
+matchMsg :: [Receive] -> Message -> Receive
+matchMsg [] _ = error "matchMsg: no matching receive patterns found"
+matchMsg (r@(pat, exp) : rs) msg 
+    = let expectedTypes = map fst pat 
+          equalLength = (length expectedTypes == length msg) in
+          if equalLength && matchMsg' expectedTypes msg then r else matchMsg rs msg
+
+matchMsg' :: [Type] -> [Value] -> Bool
+matchMsg' [] [] = True
+matchMsg' [] _ = error "matchMsg': no of tuples in msg is more than in receive statement"
+matchMsg' _ [] = error "matchMsg': no of tuples in receive statement is more than in msg"
+matchMsg' (t : ts) (v : vs)
+    = case v of
+        UnitV           -> if t == "UnitV" then matchMsg' ts vs else False
+        BoolV _         -> if t == "BoolV" then matchMsg' ts vs else False
+        NumberV _       -> if t == "NumberV" then matchMsg' ts vs else False
+        StringV _       -> if t == "StringV" then matchMsg' ts vs else False
+        ActorV _        -> if t == "ActorV" then matchMsg' ts vs else False
+        ListV _         -> if t == "ListV" then matchMsg' ts vs else False
+        EncryptedV _ _  -> if t == "EncryptedV" then matchMsg' ts vs else False
 
 -- Creates the initial GlobalEnv if provided with the list of behaviours
 initialEnv :: [Behaviour] -> GlobalEnv
@@ -566,14 +590,16 @@ evalExp aid (ArithmeticE exp1 exp2 operator)
             "/"     -> return (NumberV (div n1 n2)) 
             "*"     -> return (NumberV (n1 * n2))
 
-evalExp aid (EncryptE exp key)
+evalExp aid (EncryptE exp keyExp)
     = do
         value <- evalExp aid exp
+        keyEval@(StringV key) <- evalExp aid keyExp
         return (EncryptedV value key)
 
-evalExp _ (DecryptE enc givenKey)
+evalExp aid (DecryptE enc keyExp)
     = do
         encValue@(EncryptedV value actualKey) <- lookupName enc
+        keyValue@(StringV givenKey) <- evalExp aid keyExp
         if givenKey == actualKey then return value else error "Wrong key used to decrypt."
 
 evalExps :: MonadStepped IState m => ActorId -> [Exp] -> m [Value]
