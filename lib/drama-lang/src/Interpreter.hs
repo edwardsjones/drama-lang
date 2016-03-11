@@ -516,12 +516,18 @@ evalExp aid (ConsE exp var)
 evalExp selfId (SendE name aps)
     = do
         msg <- evalExps selfId aps
-        ActorV otherId <- lookupName name
-        otherInst <- lookupActorInstance otherId
+        val <- evalExp selfId name
+        let otherId = getId val
+        otherInst <- trace ("otherId: " ++ (show otherId)) (lookupActorInstance otherId)
         let newInbox = (_aiInbox otherInst) ++ [msg]
             otherInst' = otherInst { _aiInbox = newInbox }
         isGlobalEnv . geActorInstances %= M.insert otherId otherInst'
         return UnitV
+    where
+        getId = \v ->  
+            case v of
+                ActorV a -> a
+                NumberV n -> n
 
 evalExp aid (LetE name exp1 exp2)
     = do

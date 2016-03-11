@@ -72,7 +72,7 @@ data Exp
     | ListOperationE String Exp
     | VarE Name
     | ArithmeticE Exp Exp String
-    | SendE Name ActualParams
+    | SendE Exp ActualParams
     | LetE Name Exp Exp
     | CreateE Name ActualParams
     | PrintE String Exp

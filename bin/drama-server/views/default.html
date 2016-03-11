@@ -1,6 +1,9 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>Drama Interpreter</title>
 
@@ -11,13 +14,15 @@
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- jQuery CDN -->
-    <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
 
     <!-- Latest compiled and minified JavaScript -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
     <script src="drama.js"></script>
+
 </head>
-<html lang="en">
+<body>
+
     <div class="col-md-1"></div>
     <div id="page-content" class="col-md-10">
         <div class="page-header">
@@ -35,29 +40,84 @@
             </div>
         </div>
         <div class="col-md-6">
-            <div id="output-heading">
-                <h2>Program State</h2>
+            <div id="output-tabs" role="navigation">
+                <ul class="nav nav-tabs">
+                    <li role="presentation" class="singular-tab active"><a href="#">Overview</a></li>
+                    <li role="presentation" class="singular-tab"><a href="#">Detailed Actor View</a></li>
+                    <li role="presentation" class="singular-tab"><a href="#">Examples</a></li>
+                    <li role="presentation" class="singular-tab"><a href="#">Options</a></li>
+                </ul>
             </div>
-            <div class="output-contents">
-                <div id="actor-id-info"> </div>
-                <div class="panel panel-default" id="actor-display">
-                    <div id="display-heading" class="panel-heading">Program state will appear here once execution begins.</div>
-                    <div class="panel-body">
-                        <div id="actor-info-id" class="col-md-4"> </div>
-                        <div id="actor-info-beh" class="col-md-4"> </div>
-                        <div id="actor-info-cr" class="col-md-4"> </div>
-                        <div id="actor-info-table" class="row">
-                            <div id="actor-inbox-table" class="col-md-6"> </div>
-                            <div id="actor-bindings-table" class="col-md-6"> </div>
+            <div id="output-content" class="row">
+                <div class="col-md-4">
+                    <div id="overview-heading-container-1">
+                        <div id="overview-heading-info-1">
+                            <div class="col-md-8">--</div>
+                            <div class="col-md-4"><span class="glyphicon glyphicon-user"></span></div>
+                        </div>
+                        <div id="overview-heading-dropdown-1">
+                            <div class="btn-group">
+                                <button id="dropdown-menu-1" class="btn btn-default btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose actor...<span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="dropdown-menu-1"></ul>
+                            </div>
                         </div>
                     </div>
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="execute-options" id="exe-op-1" value="-1" disabled>
+                            Execute next
+                        </label>
+                    </div>
+                    <div id="overview-table-1"></div>
                 </div>
-                <div class="panel panel-default" id="message-editor">
-                    <div id="editor-heading" class="panel-heading">Message Editor</div>
-                    <div id="editor-body" class="panel-body">Select a message to edit its contents here.</div>
+                <div class="col-md-4">
+                    <div id="overview-heading-container-2">
+                        <div id="overview-heading-info-2">
+                            <div class="col-md-8">--</div>
+                            <div class="col-md-4"><span class="glyphicon glyphicon-user"></span></div>
+                        </div>
+                        <div id="overview-heading-dropdown-2">
+                            <div class="btn-group">
+                                <button id="dropdown-menu-2" class="btn btn-default btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose actor...<span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="dropdown-menu-2"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="execute-options" id="exe-op-2" value="-1" disabled>
+                            Execute next
+                        </label>
+                    </div>
+                    <div id="overview-table-2"></div>
+                </div>
+                <div class="col-md-4">
+                    <div id="overview-heading-container-3">
+                        <div id="overview-heading-info-3">
+                            <div class="col-md-8">--</div>
+                            <div class="col-md-4"><span class="glyphicon glyphicon-user"></span></div>
+                        </div>
+                        <div id="overview-heading-dropdown-3">
+                            <div class="btn-group">
+                                <button id="dropdown-menu-3" class="btn btn-default btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose actor...<span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="dropdown-menu-3"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="execute-options" id="exe-op-3" value="-1" disabled>
+                            Execute next
+                        </label>
+                    </div>
+                    <div id="overview-table-3"></div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-md-1"></div>
+</body>
 </html>

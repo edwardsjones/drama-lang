@@ -83,7 +83,7 @@ Exp             : '(' ')'                                   { UnitE }
                 | Exp ':' identifier                        { ConsE $1 $3 }
                 | Exp eq Exp                                { EqualityE $1 $3 $2 }
                 | Exp arith_op Exp                          { ArithmeticE $1 $3 $2 }
-                | send identifier '(' MsgAP ')'             { SendE $2 $4 }
+                | send Exp '(' MsgAP ')'                    { SendE $2 $4 }
                 | let identifier '=' Exp in Exp             { LetE $2 $4 $6 }
                 | create identifier '(' ActualParams ')'    { CreateE $2 $4 }
                 | if '(' Exp ')' then '{' Exp '}' else '{'

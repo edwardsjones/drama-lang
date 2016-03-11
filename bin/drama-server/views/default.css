@@ -2,6 +2,10 @@ html, body, #page-content {
     height: 100%;
 }
 
+#needham-fix {
+    float: right;
+}
+
 #prog-textarea {
     background-color: #323232;
     border: 1px solid #000;
@@ -35,12 +39,25 @@ html, body, #page-content {
     line-height: 2em;
 }
 
+.green {
+    color: #51a351;
+}
+
+#overview-heading-container {
+    margin-top: 10px;
+    text-align: center;
+}
+
+#overview-table th {
+    border-top: none !important;
+}
+
 .enckeys {
     display: table-cell;
     vertical-align: middle;
 }
 
-.glyphicon {
+.glyphicon-info-sign {
     float: right;
 }
 
