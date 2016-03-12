@@ -2,10 +2,6 @@ html, body, #page-content {
     height: 100%;
 }
 
-#needham-fix {
-    float: right;
-}
-
 #prog-textarea {
     background-color: #323232;
     border: 1px solid #000;
@@ -51,6 +47,15 @@ html, body, #page-content {
 #overview-table th {
     border-top: none !important;
 }
+
+#output-content {
+    margin-top: 10px;
+}
+
+.overview-menu .btn-group {width:100%;}
+.overview-menu .btn-group .btn {width:100%;}
+.overview-menu .btn-group .btn.dropdown-toggle {width:100%;}
+.overview-menu .btn-group .dropdown-menu {width:100%;}
 
 .enckeys {
     display: table-cell;

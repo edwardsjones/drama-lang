@@ -52,13 +52,21 @@ Program         : BehaviourList Instantiation               { Program $1 $2 }
 BehaviourList   : Behaviour                                 { [$1] }
                 | BehaviourList Behaviour                   { $2 : $1 }
 
-Behaviour       : behaviour identifier '(' FormalParams ')'
+Behaviour       : behaviour identifier '(' ActorFP ')'
                   '{' Exp Receive '}'                       { Behaviour $2 $4 $7 $8 }
 
 Receive         : receive Handling done                     { $2 }
 
 Handling        : '(' MsgFP ')' '->' Exp                    { [($2, $5)] }
                 | Handling '(' MsgFP ')' '->' Exp           { ($3, $6) : $1 }
+
+ActorFP         : {-- empty --}                             { [] }
+                | FormalParam                               { [$1] }
+                | ActorFP ',' FormalParam                   { $3 : $1 }
+
+ActorAP         : {-- empty --}                             { [] }
+                | ActualParam                               { [$1] }
+                | ActorAP ',' ActualParam                   { $3 : $1 }
 
 MsgFP           : {-- empty --}                             { [] }
                 | type FormalParam                          { [($1, $2)] }
@@ -85,7 +93,7 @@ Exp             : '(' ')'                                   { UnitE }
                 | Exp arith_op Exp                          { ArithmeticE $1 $3 $2 }
                 | send Exp '(' MsgAP ')'                    { SendE $2 $4 }
                 | let identifier '=' Exp in Exp             { LetE $2 $4 $6 }
-                | create identifier '(' ActualParams ')'    { CreateE $2 $4 }
+                | create identifier '(' ActorAP ')'         { CreateE $2 $4 }
                 | if '(' Exp ')' then '{' Exp '}' else '{'
                   Exp '}'                                   { IfE $3 $7 $11 }
 

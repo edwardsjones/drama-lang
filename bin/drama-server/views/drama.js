@@ -14,16 +14,14 @@ $(function () {
         $.post(server + "/programs", progStr, function (data) {
             $(".step").attr("disabled", false);
             $(".back").attr("disabled", true);
-            reset_message_editor();
             ticket = data;
             all_states = [data.state];
-            init_display(option);
+            update_display(option);
         });
     });
 
     $(".step").on("click", function () {
         if (ticket.state) {
-            //reset_message_editor(); 
             $.post(server + "/step", JSON.stringify(ticket), function (data) {
                 if (data === "done") {
                     $(".step").attr("disabled", true);
@@ -40,7 +38,6 @@ $(function () {
     });
 
     $(".back").on("click", function () {
-        //reset_message_editor();
         if (all_states.length <= 2) {
             $(".back").attr("disabled", true);
         } else {
@@ -81,11 +78,12 @@ $(function () {
             get_overview();
         } else if (option === "Detailed Actor View") {
             get_detailed_view();
+            reset_message_editor();
         }
     }
 
     var example_init = function () {
-        var example_string = "<div id=\"output-content\"><div><p>Select an example from the dropdown below to load it's code.</p></div><div id=\"example-dropdown\"><div class=\"btn-group\"><button id=\"dropdown-menu\" class=\"btn btn-default btn-sm dropdown-toggle\" type=\"button\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">Choose an example<span class=\"caret\"></span></button><ul class=\"dropdown-menu\" aria-labelledby=\"dropdown-menu\"><li><a href=\"#\">Send to Self</a></li><li><a href=\"#\">Acknowledge</a></li><li><a href=\"#\">Producer-Consumer</a></li><li role=\"separator\" class=\"divider\"></li><li><a href=\"#\">Needham-Schroeder</a></li><li><a href=\"#\">Needham-Schroeder (fixed)</a></li></ul></div></div></div>";
+        var example_string = "<div id=\"output-content\"><div><p>Select an example from the dropdown below to load the code into the display.</p></div><div id=\"example-dropdown\"><div class=\"btn-group\"><button id=\"dropdown-menu\" class=\"btn btn-default btn-sm dropdown-toggle\" type=\"button\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">Choose an example<span class=\"caret\"></span></button><ul class=\"dropdown-menu\" aria-labelledby=\"dropdown-menu\"><li><a href=\"#\">Send to Self</a></li><li><a href=\"#\">Acknowledge</a></li><li><a href=\"#\">Producer-Consumer</a></li><li role=\"separator\" class=\"divider\"></li><li><a href=\"#\">Needham-Schroeder</a></li><li><a href=\"#\">Needham-Schroeder (fixed)</a></li></ul></div></div></div>";
         
         $("#output-content").replaceWith(example_string);
         $("#example-dropdown li a").click(function(){
@@ -96,30 +94,31 @@ $(function () {
 
     var load_program = function (name) {
         if (name === "Send to Self") {
-            $("#prog-textarea").val("behaviour sender () {\n  let me = self in\n    send me (1)\n  receive\n    (NumberV x) ->\n      ()\n  done\n}\n\ncreate sender ()");
+            $("#prog-textarea").val(examples.send_to_self);
         } else if (name === "Acknowledge") {
-            $("#prog-textarea").val("behaviour chatterbox (mate) {\n  send mate (self)\n  receive\n    (NumberV x) ->\n      ()\n  done\n}\n\nbehaviour acknowledge () {\n  ()\n  receive\n    (ActorV adr) ->\n      send adr (1)\n  done\n}\n\nbehaviour starter () {\n  let ack = create acknowledge () in\n    create chatterbox (ack)\n  receive\n    () -> ()\n  done\n}\n\ncreate starter ()");
+            $("#prog-textarea").val(examples.acknowledge);
         } else if (name === "Producer-Consumer") {
-            $("#prog-textarea").val("behaviour producer () {\n  ()\n  receive\n    (ActorV id, StringV msg) ->\n      if (msg == \"ready\") then {\n        send id (\"job\")\n      } else {\n        ()\n      }\n  done\n}\n\nbehaviour consumer (prod) {\n  send prod (self, \"ready\")\n  receive\n    (StringV job) ->\n      if (job == \"stop\") then {\n        ()\n      } else {\n        send prod (self, \"ready\")\n      }\n  done\n}\n\nbehaviour creater () {\n  let prod = create producer () in\n    create consumer (prod)\n  receive\n    () -> ()\n  done\n}\n\ncreate creater ()");
+            $("#prog-textarea").val(examples.prod_cons);
         } else if (name === "Needham-Schroeder") {
-            $("#prog-textarea").val("behaviour alice (kpb ksa) {\n  // bob's address is actually impostor's address\n  // kpb is actually kpi\n  let bob_address = 4 in\n  let my_nonce = \"alice nonce\" in\n    send bob_address (encrypt my_nonce kpb, self)\n  receive\n    // response from impostor (bob's msg unchanged)\n    // both nonces encrypted with kpa\n    (EncryptedV na_enc, EncryptedV nb_enc) ->\n      let na = decrypt na_enc ksa in\n      let nb = decrypt nb_enc ksa in\n          send bob_address (encrypt nb kpb)\n  done\n}\n\nbehaviour impostor (bob alice kpb ksi) {\n  ()\n  receive\n    // relay msg from alice to bob (change encryption)\n    // impostor learns first nonce\n    (EncryptedV na_enc, ActorV alice_address) ->\n      let na = decrypt na_enc ksi in\n      send bob (encrypt na kpb, encrypt self kpb)\n\n    // response from bob\n    (EncryptedV na_enc, EncryptedV nb_enc) ->\n      send alice (na_enc, nb_enc)\n\n    // second msg from alice\n    // impostor learns second nonce\n    (EncryptedV nb_enc) ->\n      let nb = decrypt nb_enc ksi in\n        send bob (encrypt nb kpb)\n  done\n}\n\nbehaviour bob (kpa ksb) {\n  let my_nonce = \"bob nonce\" in\n    ()\n  receive\n    // message from impostor\n    // \"alice_address\" is impostor's address\n    (EncryptedV na_enc, EncryptedV alice_address) ->\n      let na = decrypt na_enc ksb in\n      let alice = decrypt alice_address ksb in\n        send alice (encrypt na kpa, encrypt my_nonce kpa)\n  done\n}\n\nbehaviour starter () {\n  let bob = create bob (\"alice key\" \"bob key\") in\n  let alice = create alice (\"impostor key\" \"alice key\") in\n  let impostor = create impostor (bob alice \"bob key\" \"impostor key\") in\n    ()\n  receive\n    () -> ()\n  done\n}\n\ncreate starter ()");
+            $("#prog-textarea").val(examples.ns);
         } else if (name === "Needham-Schroeder (fixed)") {
-            $("#prog-textarea").val("behaviour alice (kpb ksa) {\n  // bob's address is actually impostor's address\n  // kpb is actually kpi\n  let bob_address = 4 in\n  let my_nonce = \"alice nonce\" in\n    send bob_address (encrypt my_nonce kpb, self)\n  receive\n    // response from impostor (bob's msg unchanged)\n    // both nonces encrypted with kpa\n    (EncryptedV na_enc, EncryptedV nb_enc, EncryptedV bob_enc) ->\n      let na = decrypt na_enc ksa in\n      let nb = decrypt nb_enc ksa in\n      let bob = decrypt bob_enc ksa in\n        if (bob == bob_address) then {\n          send bob (encrypt nb kpb)\n        } else {\n          ()\n        }\n  done\n}\n\nbehaviour impostor (bob alice kpb ksi) {\n  ()\n  receive\n    // relay msg from alice to bob (change encryption)\n    // impostor learns first nonce\n    (EncryptedV na_enc, ActorV alice_address) ->\n      let na = decrypt na_enc ksi in\n        send bob (encrypt na kpb, encrypt self kpb)\n\n    // response from bob\n    (EncryptedV na_enc, EncryptedV nb_enc, EncryptedV bob_enc) ->\n      send alice (na_enc, nb_enc, bob_enc)\n\n    // second msg from alice\n    // impostor learns second nonce\n    (EncryptedV nb_enc) ->\n      let nb = decrypt nb_enc ksi in\n        send bob (encrypt nb kpb)\n  done\n}\n\nbehaviour bob (kpa ksb) {\n  let my_nonce = \"bob nonce\" in\n    ()\n  receive\n    // message from impostor\n    // \"alice_address\" is impostor's address\n    (EncryptedV na_enc, EncryptedV alice_address) ->\n      let na = decrypt na_enc ksb in\n      let alice = decrypt alice_address ksb in\n        send alice (encrypt na kpa, encrypt my_nonce kpa, encrypt self kpa)\n  done\n}\n\nbehaviour starter () {\n  let bob = create bob (\"alice key\" \"bob key\") in\n  let alice = create alice (\"impostor key\" \"alice key\") in\n  let impostor = create impostor (bob alice \"bob key\" \"impostor key\") in\n    ()\n  receive\n    () -> ()\n  done\n}\n\ncreate starter ()");
+            $("#prog-textarea").val(examples.nsf);
         }
     }
 
     var overview_init = function () {
         var overview_string = "<div id=\"output-content\" class=\"row\">";
         for (var u = 1; u < 4; u++) {
-            overview_string = overview_string + "<div class=\"col-md-4\"><div id=\"overview-heading-container-"+u+"\"><div id=\"overview-heading-info-"+u+"\"><div class=\"col-md-8\">--</div><div class=\"col-md-4\"><span class=\"glyphicon glyphicon-user\"></span></div></div><div id=\"overview-heading-dropdown-"+u+"\"><div class=\"btn-group\"><button id=\"dropdown-menu-"+u+"\" class=\"btn btn-default btn-sm dropdown-toggle\" type=\"button\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">Choose actor...<span class=\"caret\"></span></button><ul class=\"dropdown-menu\" aria-labelledby=\"dropdown-menu-"+u+"\"></ul></div></div></div><div class=\"radio\"><label><input type=\"radio\" name=\"execute-options\" id=\"exe-op-"+u+"\" value=\"-1\" disabled>Execute next</label></div><div id=\"overview-table-"+u+"\"></div></div>";
+            overview_string = overview_string + "<div class=\"col-md-4\"><div id=\"overview-heading-container-"+u+"\"><div id=\"overview-heading-info-"+u+"\"><div id=\"behaviour-name-"+u+"\" class=\"col-md-8\">--</div><div id=\"user-icon-"+u+"\" class=\"col-md-4\"><span class=\"glyphicon glyphicon-user\"></span></div></div><div id=\"overview-heading-dropdown-"+u+"\" class=\"overview-menu\"><div class=\"btn-group\"><button id=\"dropdown-menu-"+u+"\" class=\"btn btn-default btn-sm dropdown-toggle\" type=\"button\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">Choose actor...<span class=\"caret\"></span></button><ul id=\"dd-contents-"+u+"\" class=\"dropdown-menu\" aria-labelledby=\"dropdown-menu-"+u+"\"></ul></div></div></div><div class=\"radio\"><label><input type=\"radio\" name=\"execute-options\" id=\"exe-op-"+u+"\" value=\"-1\" disabled>Execute next</label></div><div id=\"overview-table-"+u+"\"></div></div>";
         }
         overview_string = overview_string + "</div>";
         $("#output-content").replaceWith(overview_string);
     }
 
     var detailed_init = function () {
-        var detail_string = "<div id=\"output-content\"><div class=\"output-contents\"><div id=\"actor-id-info\"></div><div class=\"panel panel-default\" id=\"actor-display\"><div id=\"display-heading\" class=\"panel-heading\">Program state will appear here once execution begins.</div><div class=\"panel-body\"><div id=\"actor-info-id\" class=\"col-md-4\"></div><div id=\"actor-info-beh\" class=\"col-md-4\"></div><div id=\"actor-info-cr\" class=\"col-md-4\"></div><div id=\"actor-info-table\" class=\"row\"><div id=\"actor-inbox-table\" class=\"col-md-6\"></div><div id=\"actor-bindings-table\" class=\"col-md-6\"></div></div></div></div><div class=\"panel panel-default\" id=\"message-editor\"><div id=\"editor-heading\" class=\"panel-heading\">Message Editor</div><div id=\"editor-body\" class=\"panel-body\">Select a message to edit its contents here.</div></div></div></div>";
+        var detail_string = "<div id=\"output-content\"><div class=\"output-contents\"><div id=\"actor-id-info\"><div id=\"exe-id\" class=\"col-md-6\"></div><div id=\"next-id\" class=\"col-md-6\"></div></div><div class=\"panel panel-default\" id=\"actor-display\"><div id=\"display-heading\" class=\"panel-heading\">Program state will appear here once execution begins.</div><div class=\"panel-body\"><div id=\"actor-info-id\" class=\"col-md-4\"></div><div id=\"actor-info-beh\" class=\"col-md-4\"></div><div id=\"actor-info-cr\" class=\"col-md-4\"></div><div id=\"actor-info-table\" class=\"row\"><div id=\"actor-inbox-table\" class=\"col-md-6\"></div><div id=\"actor-bindings-table\" class=\"col-md-6\"></div></div></div></div><div class=\"panel panel-default\" id=\"message-editor\"><div id=\"editor-heading\" class=\"panel-heading\">Message Editor</div><div id=\"editor-body\" class=\"panel-body\">Select a message to edit it here (note that this will likely cause behaviour which cannot be replicated in Drama alone).</div></div></div></div>";
         $("#output-content").replaceWith(detail_string);
+        $(".glyphicon").tooltip({ placement: "left" });
     }
 
     var get_overview = function () {
@@ -130,20 +129,24 @@ $(function () {
             var selected_item = $("#dropdown-menu-"+t).text().trim();
             var aid = selected_item.charAt(6);
             var number_of_actors = Object.keys(ticket.state["_isGlobalEnv"]["_geActorInstances"]).length;
-
+    
             if (selected_item === "Choose actor..." || number_of_actors < aid) {
-                overview_string = overview_string + "<div class=\"col-md-4\"><div id=\"overview-heading-container-"+t+"\"><div id=\"overview-heading-info-"+t+"\"><div class=\"col-md-8\">--</div><div class=\"col-md-4\"><span class=\"glyphicon glyphicon-user\"></span></div></div><div id=\"overview-heading-dropdown-"+t+"\"><div class=\"btn-group\"><button id=\"dropdown-menu-"+t+"\" class=\"btn btn-default btn-sm dropdown-toggle\" type=\"button\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">Choose actor...<span class=\"caret\"></span></button><ul class=\"dropdown-menu\" aria-labelledby=\"dropdown-menu-"+t+"\">" + populate_dropdown(ticket.state["_isGlobalEnv"]["_geActorInstances"]) + "</ul></div></div></div><div class=\"radio\"><label><input type=\"radio\" name=\"execute-options\" id=\"exe-op-"+t+"\" value=\"-1\" disabled>Execute next</label></div><div id=\"overview-table-"+t+"\"></div></div>";
+                $("#dd-contents-"+t).html(populate_dropdown(ticket.state["_isGlobalEnv"]["_geActorInstances"]));
+                $("#behaviour-name-"+t).html("--");
+                $("#user-icon-"+t+" > span").removeClass("green");
+                $("#overview-table-"+t).html("");            
+                $("#dropdown-menu-"+t).html("Choose actor...<span class=\"caret\"></span>");
             } else {
-                var glyphicon;
                 if (ticket.ready.indexOf(parseInt(aid)) !== -1) {
-                    glyphicon = "<span class=\"green glyphicon glyphicon-user\"></span>";
+                    $("#user-icon-"+t+" > span").addClass("green");
                 } else {
-                    glyphicon = "<span class=\"glyphicon glyphicon-user\"></span>";
+                    $("#user-icon-"+t+" > span").removeClass("green");
                 }
-                overview_string = overview_string + "<div class=\"col-md-4\"><div id=\"overview-heading-container-"+t+"\"><div id=\"overview-heading-info-"+t+"\"><div class=\"col-md-8\">" + ticket.state["_isGlobalEnv"]["_geActorInstances"][aid]["_aiBehaviour"]["behaviourName"] + "</div><div class=\"col-md-4\">" + glyphicon + "</div></div><div id=\"overview-heading-dropdown-"+t+"\"><div class=\"btn-group\"><button id=\"dropdown-menu-"+t+"\" class=\"btn btn-default btn-sm dropdown-toggle\" type=\"button\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">" + selected_item + "<span class=\"caret\"></span></button><ul class=\"dropdown-menu\" aria-labelledby=\"dropdown-menu-"+t+"\">" + populate_dropdown(ticket.state["_isGlobalEnv"]["_geActorInstances"]) + "</ul></div></div></div><div class=\"radio\"><label><input type=\"radio\" name=\"execute-options\" id=\"exe-op-"+t+"\" value=\""+aid+"\">Execute next</label></div><div id=\"overview-table-"+t+"\">" + get_inbox_table(ticket.state["_isGlobalEnv"]["_geActorInstances"][aid]["_aiInbox"]).substring(6) + "</div></div>";
+                $("#dropdown-menu-"+t).html(selected_item + "<span class=\"caret\"></span>");
+                $("#dd-contents-"+t).html(populate_dropdown(ticket.state["_isGlobalEnv"]["_geActorInstances"]));
+                $("#overview-table-"+t).html(get_inbox_table(ticket.state["_isGlobalEnv"]["_geActorInstances"][aid]["_aiInbox"]).substring(6));
             }
         }
-        $("#output-content").html(overview_string);
         for (t = 1; t < 4; t++) {
             attach_listeners(t);
         }
@@ -156,35 +159,23 @@ $(function () {
             var aid = selected_text.charAt(6);
             var inbox_string = get_inbox_table(ticket.state["_isGlobalEnv"]["_geActorInstances"][aid]["_aiInbox"]);
 
-            var info_string = "<div class=\"col-md-8\">" + ticket.state["_isGlobalEnv"]["_geActorInstances"][aid]["_aiBehaviour"]["behaviourName"] + "</div>";
-
             // If actor is ready, produce green glyph, else grey
             if (ticket.ready.indexOf(parseInt(aid)) === -1) {
-                info_string = info_string + "<div class=\"col-md-4\"><span class=\"glyphicon glyphicon-user\"></span></div>"; 
+                $("#user-icon-"+t+" > span").removeClass("green");
             } else {
-                info_string = info_string + "<div class=\"col-md-4\"><span class=\"green glyphicon glyphicon-user\"></span></div>";
+                $("#user-icon-"+t+" > span").addClass("green");
             }
 
+            $("#behaviour-name-"+t).html(ticket.state["_isGlobalEnv"]["_geActorInstances"][aid]["_aiBehaviour"]["behaviourName"]);
             $("#exe-op-"+t).prop("disabled", false);
             $("#exe-op-"+t).val(aid);
             $("#overview-table-"+t).html(inbox_string.substring(6));
-            $("#overview-heading-info-"+t).html(info_string);
         });
         $("#exe-op-"+t).click(function () {
             ticket.state["_isCurrentAID"] = parseInt($(this).val());
         });
     }
 
-    var blank_overview = function () {
-        var overview_string = "";
-        for (var t = 1; t < 4; t++) {
-            overview_string = overview_string + "<div class=\"col-md-4\"><div id=\"overview-heading-container-"+t+"\"><div id=\"overview-heading-info-"+t+"\"><div class=\"col-md-8\">--</div><div class=\"col-md-4\"><span class=\"glyphicon glyphicon-user\"></span></div></div><div id=\"overview-heading-dropdown-"+t+"\"><div class=\"btn-group\"><button id=\"dropdown-menu-"+t+"\" class=\"btn btn-default btn-sm dropdown-toggle\" type=\"button\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">Choose actor...<span class=\"caret\"></span></button><ul class=\"dropdown-menu\" aria-labelledby=\"dropdown-menu-"+t+"\">" + populate_dropdown(ticket.state["_isGlobalEnv"]["_geActorInstances"]) + "</ul></div></div></div><div class=\"radio\"><label><input type=\"radio\" name=\"execute-options\" id=\"exe-op-"+t+"\" value=\"-1\" disabled>Execute next</label></div><div id=\"overview-table-"+t+"\"></div></div>";
-        }
-        $("#output-content").html(overview_string);
-        for (t = 1; t < 4; t++) {
-            attach_listeners(t);
-        }
-    }
     // Below this point is all the code for Detailed Actor View
 
 
@@ -208,14 +199,12 @@ $(function () {
 
     var get_detailed_view = function () {
 
-        var id_info_string = "<div class=\"col-md-6\">Executing Actor ID: " + ticket.state["_isCurrentAID"] + "</div>";
-        id_info_string = id_info_string + "<div class=\"col-md-6\">Next Available Actor ID: " + ticket.state["_isGlobalEnv"]["_geNextAvailableActor"] + "</div>";
+        $("#exe-id").html("Executing Actor ID: " + ticket.state["_isCurrentAID"]);
+        $("#next-id").html("Next Available Actor ID: " + ticket.state["_isGlobalEnv"]["_geNextAvailableActor"]);
 
         var dropdown_string = "<div id=\"choose-actor\" class=\"dropdown\"> <button class=\"btn btn-default dropdown-toggle\" type=\"button\" id=\"dropdown-actor-menu\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"true\"> Choose actor instance... <span class=\"caret\"></span> </button> <ul class=\"dropdown-menu\" aria-labelledby=\"actor-dropdown\">" + populate_dropdown(ticket.state["_isGlobalEnv"]["_geActorInstances"]) + "</ul> <span title=\"The actor displayed here is the one that will execute next, assuming it is ready (ready actors are shown in green).\" class=\"glyphicon glyphicon-info-sign\" aria-hidden=\"true\"></span>";
 
-        $("#actor-id-info").html(id_info_string);
         $("#display-heading").html(dropdown_string);
-        $(".glyphicon").tooltip({ placement: "left" });
 
         // Changes the isCurrentAID when an actor is selected in the dropdown;
         // this allows the user to control which actors execute, and when.
@@ -472,7 +461,7 @@ $(function () {
     // Resets message editor panel.
     var reset_message_editor = function () {
         $("#editor-heading").html("Message Editor");
-        $("#editor-body").html("Select a message to edit its contents here.");
+        $("#editor-body").html("Select a message to edit it here (note that this will likely cause behaviour which cannot be replicated in Drama alone).");
     }
 
     // Function used to create the ListV object to insert into the state upon
@@ -507,7 +496,7 @@ $(function () {
 
             for (var i = 0; i < inbox.length; i++) {
 
-                inbox_table = inbox_table + "<tr> <th>" + (i+1) + "</th> <td>";
+                inbox_table = inbox_table + "<tr> <th>" + (i+1) + "</th> <td>(";
 
                 // Iterate through the messages backwards; due to how the program is parsed, 
                 // values that are lists in the Haskell interpreter are reversed. 
@@ -523,8 +512,6 @@ $(function () {
                                 inbox_table = inbox_table + "\"" + inbox[i][j]["contents"][k]["contents"] + "\"";
                             } else if (inbox[i][j]["contents"][k]["tag"] === "UnitV") {
                                 inbox_table = inbox_table + "()";
-                            } else if (inbox[i][j]["contents"][k]["tag"] === "ListV") {
-                                inbox_table = inbox_table + "ListV";
                             } else {
                                 inbox_table = inbox_table + inbox[i][j]["contents"][k]["contents"];
                             }
@@ -536,10 +523,8 @@ $(function () {
                         }
                         inbox_table = inbox_table + "]";
                     } else if (inbox[i][j]["tag"] === "EncryptedV") {
-                        inbox_table = inbox_table + "EncryptedV (Key " + inbox[i][j]["contents"][1] + ")";
+                        inbox_table = inbox_table + "Encrypted (Key " + inbox[i][j]["contents"][1] + ")";
                     } else {
-                        inbox_table = inbox_table + inbox[i][j]["tag"] + " ";
-
                         if (inbox[i][j]["tag"] === "StringV") {
                             inbox_table = inbox_table + "\"" + inbox[i][j]["contents"] + "\"";
                         } else if (inbox[i][j]["tag"] === "UnitV") {
@@ -553,7 +538,7 @@ $(function () {
                         inbox_table = inbox_table + ", ";
                     }
                 }
-                inbox_table = inbox_table + "</td> </tr>";
+                inbox_table = inbox_table + ")</td> </tr>";
             }
         }
         inbox_table = inbox_table + "</tbody> </table>";
