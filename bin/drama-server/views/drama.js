@@ -116,18 +116,27 @@ $(function () {
     }
 
     var detailed_init = function () {
-        var detail_string = "<div id=\"output-content\"><div class=\"output-contents\"><div id=\"actor-id-info\"><div id=\"exe-id\" class=\"col-md-6\"></div><div id=\"next-id\" class=\"col-md-6\"></div></div><div class=\"panel panel-default\" id=\"actor-display\"><div id=\"display-heading\" class=\"panel-heading\">Program state will appear here once execution begins.</div><div class=\"panel-body\"><div id=\"actor-info-id\" class=\"col-md-4\"></div><div id=\"actor-info-beh\" class=\"col-md-4\"></div><div id=\"actor-info-cr\" class=\"col-md-4\"></div><div id=\"actor-info-table\" class=\"row\"><div id=\"actor-inbox-table\" class=\"col-md-6\"></div><div id=\"actor-bindings-table\" class=\"col-md-6\"></div></div></div></div><div class=\"panel panel-default\" id=\"message-editor\"><div id=\"editor-heading\" class=\"panel-heading\">Message Editor</div><div id=\"editor-body\" class=\"panel-body\">Select a message to edit it here (note that this will likely cause behaviour which cannot be replicated in Drama alone).</div></div></div></div>";
+        var detail_string = "<div id=\"output-content\"><div id=\"output-contents\"><div id=\"actor-id-info\"><div id=\"exe-id\" class=\"col-md-6\"></div><div id=\"next-id\" class=\"col-md-6\"></div></div><div class=\"panel panel-default\" id=\"actor-display\"><div id=\"display-heading\" class=\"panel-heading\">Program state will appear here once execution begins.</div><div class=\"panel-body\"><div id=\"actor-info-id\" class=\"col-md-4\"></div><div id=\"actor-info-beh\" class=\"col-md-4\"></div><div id=\"actor-info-cr\" class=\"col-md-4\"></div><div id=\"actor-info-table\" class=\"row\"><div id=\"actor-inbox-table\" class=\"col-md-6\"></div><div id=\"actor-bindings-table\" class=\"col-md-6\"></div></div></div></div><div class=\"checkbox\"><label><input id=\"editor-check\" type=\"checkbox\">Enable message editing (can cause unexpected behaviour)</label></div></div></div>";
+
         $("#output-content").replaceWith(detail_string);
         $(".glyphicon").tooltip({ placement: "left" });
-    }
+        $("#editor-check").change(function () {
+            if ($(this).prop("checked")) {
+                console.log("made it");
+                $("#output-contents").append("<div class=\"panel panel-default\" id=\"message-editor\"><div id=\"editor-heading\" class=\"panel-heading\">Message Editor</div><div id=\"editor-body\" class=\"panel-body\">Select a message to edit it here (note that this will likely cause behaviour which cannot be replicated in Drama alone).</div></div>");
+            } else {
+                $("#message-editor").remove();
+            }
+        });
 
+    }
     var get_overview = function () {
 
         var overview_string = "";
         for (var t = 1; t < 4; t++) {
 
             var selected_item = $("#dropdown-menu-"+t).text().trim();
-            var aid = selected_item.charAt(6);
+            var aid = parseInt(selected_item.substring(6));
             var number_of_actors = Object.keys(ticket.state["_isGlobalEnv"]["_geActorInstances"]).length;
     
             if (selected_item === "Choose actor..." || number_of_actors < aid) {
@@ -156,7 +165,7 @@ $(function () {
         $("#overview-heading-dropdown-"+t+" li a").click(function(){
             var selected_text = $(this).text();
             $(this).parents(".btn-group").find(".dropdown-toggle").html(selected_text+"<span class=\"caret\"></span>");
-            var aid = selected_text.charAt(6);
+            var aid = parseInt(selected_text.substring(6));
             var inbox_string = get_inbox_table(ticket.state["_isGlobalEnv"]["_geActorInstances"][aid]["_aiInbox"]);
 
             // If actor is ready, produce green glyph, else grey
@@ -178,7 +187,6 @@ $(function () {
 
     // Below this point is all the code for Detailed Actor View
 
-
     // Make tabs function as tabs instead of moving elements on the page. 
     $(document).delegate('#prog-textarea', 'keydown', function(e) {
         var key_code = e.keyCode || e.which;
@@ -188,12 +196,12 @@ $(function () {
             var start = $(this).get(0).selectionStart;
             var end = $(this).get(0).selectionEnd;
 
-            // Set textarea value to: text before caret + four spaces + text after caret
-            $(this).val($(this).val().substring(0, start) + "    " + $(this).val().substring(end));
+            // Set textarea value to: text before caret + two spaces + text after caret
+            $(this).val($(this).val().substring(0, start) + "  " + $(this).val().substring(end));
 
             // Put caret at right position again
             $(this).get(0).selectionStart =
-            $(this).get(0).selectionEnd = start + 4;
+            $(this).get(0).selectionEnd = start + 2;
         }
     });
 
@@ -216,6 +224,7 @@ $(function () {
         });
         
         populate_display(ticket.state["_isGlobalEnv"]["_geActorInstances"], ticket.state["_isCurrentAID"]);
+        $(".glyphicon").tooltip({ placement: "left" });
     };
 
 
@@ -269,7 +278,11 @@ $(function () {
         $("#actor-inbox-table").html(get_inbox_table(inbox));
         $("#actor-bindings-table").html(get_bindings_table(lenv));
 
-        // Change values in messages in table
+        prepare_editor(actor);
+
+    };
+
+    var prepare_editor = function (actor) {
         $("#actor-inbox-table > table > tbody > tr").on("click", function (event) {
 
             // Retrieve the message from the actor by getting the row they 
@@ -365,10 +378,9 @@ $(function () {
                 }
 
                 // Update the actor display with new values
-                get_table(actor);
+                $("#actor-inbox-table").html(get_inbox_table(actor["_aiInbox"]));
+                $("#actor-bindings-table").html(get_bindings_table(actor["_aiEnv"]["_leBindings"]));
             });
-
-            // Changes selected text in dropdown, and corresponding input field
             $("#msg-editor-type li a").click(function(){
                 var selected_text = $(this).text();
                 $(this).parents(".btn-group").find(".dropdown-toggle").html(selected_text+"<span class=\"caret\"></span>");
@@ -380,7 +392,6 @@ $(function () {
             });
 
         });
-
     };
 
     // Validates message inputs, and returns false on empty inputs. 
