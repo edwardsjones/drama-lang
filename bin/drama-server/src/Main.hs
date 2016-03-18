@@ -5,6 +5,7 @@ module Main (main) where
 
 import Control.Applicative
 import Control.Concurrent.STM
+import Control.Monad.Except
 import Control.Monad.Reader
 
 import Data.Default.Class
@@ -24,7 +25,7 @@ import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
 newtype AppState 
-    = AppState { serverTickets :: M.Map Int [(Maybe (I.Stepped I.IState ()))] }
+    = AppState { serverTickets :: M.Map Int [(Maybe (I.Stepped I.IState (Either String ())))] }
 
 instance Default AppState where
     def 
@@ -93,15 +94,15 @@ app = do
 
 -- Takes a Program, and returns a Maybe (Stepped s a) and the state after 
 -- the first actor has been instantiated
-setupProgram :: T.Program -> (Maybe (I.Stepped I.IState ()), I.IState)
+setupProgram :: T.Program -> (Maybe (I.Stepped I.IState (Either String ())), I.IState)
 setupProgram (T.Program bs inst) 
-    = I.step firstStepped is
+    = flip I.step is (runExceptT firstStepped)
     where 
         genv = I.initialEnv bs
         is = I.IState { I._isGlobalEnv = genv, I._isCurrentAID = 0 }
         firstStepped = (I.instantiate inst >> I.scheduler)
 
-ticketLookup :: Int -> M.Map Int [(Maybe (I.Stepped I.IState ()))] -> Maybe (I.Stepped I.IState ())
+ticketLookup :: Int -> M.Map Int [(Maybe (I.Stepped I.IState (Either String ())))] -> Maybe (I.Stepped I.IState (Either String ()))
 ticketLookup id tickets
     = case lookupResult of
         Just susps  -> head susps
