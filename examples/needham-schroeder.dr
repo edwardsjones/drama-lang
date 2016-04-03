@@ -1,0 +1,121 @@
+behaviour alice (server, kps) {
+    let my_nonce = nonce in
+        send server ("bob", self) 
+    receive
+        // response from server
+        (kpb, bob) ->
+            let bob_public = decrypt kpb kps in
+            let bob_identity = decrypt bob kps in
+            let na = encrypt my_nonce bob_public in
+            let my_identity = encrypt self bob_public in
+                // send bob first nonce
+                send bob_identity (na, my_identity) 
+
+        // response from bob with both nonces
+        (na, nb) ->
+            let na_decrypted = decrypt na ksa in
+                if (na_decrypted == my_nonce) then {
+                    let nb_decrypted = decrypt nb ksa in
+                    let nb_encrypted = encrypt nb_decrypted bob_public in
+                        send bob_identity (nb_decrypted)
+                } else {
+                    ()
+                }
+    done
+}
+
+behaviour bob (server, kps) {
+    let my_nonce = nonce in
+        ()
+    receive
+        // message from alice with her nonce
+        (na, alice) ->
+    
+            // this needs to be global 
+            let na_decrypted = decrypt na ksb in
+
+            let alice_identity = decrypt alice ksb in
+                // request key from server
+                send server ("alice", self)
+
+        // response from server
+        (kpa, alice) ->
+            let alice_public = decrypt kpa kps in
+            let alice_identity = decrypt alice kps in
+            let nb = encrypt my_nonce alice_public in
+            let na = encrypt na_decrypted alice_public in
+                // send bob both nonces, confirming alice's identity to bob
+                send alice_identity (na, nb)
+
+        // message from alice with bob's nonce
+        (nb) ->
+            let nb_decrypted = decrypt nb ksb in
+            if (nb_decrypted == my_nonce) {
+                // start communications
+            } else {
+                // oh dear
+            }
+    done
+}
+
+behaviour server (kss, kps, bob_address, alice_address) {
+    let kss = kss in
+    let kps = kps in
+    let bob_adress = bob_adress in
+    let alice_address = alice_address in
+        ()
+    receive
+        (identity, return_address) ->
+            if (identity == "bob") then {
+                let kpb = encrypt 3847 kss in
+                let bob_address_enc = encrypt bob_address kss in
+                    send return_address (kpb, bob_address_enc)
+            } else {
+                if (identity == "alice") then {
+                    let kpa = encrypt 8281 kss in
+                    let alice_address_enc = encrypt alice_address kss in
+                        send return_address (kpa, alice_address_enc)
+                } else {
+                    ()
+                }
+            }
+    done
+}
+
+behaviour starter () {
+    let server = create server (1234, 5678, 2, 3) in
+    let bob = create bob (server, 5678) in
+    let alice = create alice (server, 5678) in
+    ()
+    receive 
+        () -> ()
+    done
+}
+
+create starter ()
+
+Problems;
+
+-need global lets (i.e. variables to stay in scope across receive statements)
+    -could also have a declared, but unassigned variable in the prereceive statement
+
+-creation; server needs bob and alices addresses, alice and bob need server's address
+    -could be solved with the above fix (unassigned variables)
+
+-could try a different protocol; they quite nicely encapsulate the functionality of the language
+
+KEYS:
+
+Alice
+-Secret (ksa) = 7465
+-Public (kpa) = 1280
+
+Bob
+-Secret (ksb) = 3900
+-Public (kpb) = 7255
+
+Impostor 
+-Secret (ksi) = 6689
+-Public (kpi) = 2731
+
+Fix by adding "bob_address" to bob's response. The impostor cannot decrypt the message to change it to his response, so alice can then ascertain that this address and the one she has been using are different. 

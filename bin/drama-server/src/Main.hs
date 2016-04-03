@@ -71,7 +71,7 @@ app = do
             is = S.state ticket
             maybeSusp = ticketLookup suspID serverTix
         case maybeSusp of
-            Just susp   ->  let (nextSusp, is') = I.step susp is
+            Just susp   ->  let (nextSusp, is') = I.step (runExceptT susp) is
                                 readyList = getReadyActors is'
                                 newTicket = S.ClientTicket { S.ticketID = suspID, S.state = is', S.ready = readyList }
                             in do

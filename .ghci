@@ -1,0 +1,3 @@
+:l Happy Interpreter Tokens
+:m +Happy Interpreter Tokens
+:set prompt "ghci> "

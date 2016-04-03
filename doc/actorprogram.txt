@@ -1,0 +1,84 @@
+behaviour chatterbox (mate) {
+    send mate (SelfE)
+    receive 
+        (x) -> 
+            ()
+    done
+}
+
+behaviour ackowledge {
+    ()
+    receive
+        (actor) ->
+            send actor ()
+    done
+}
+
+behaviour starter {
+    let mate = create acknowledge in
+        create chatterbox (mate)
+    receive
+        () -> ()
+    done
+}
+
+create starter ()
+
+behaviour sender {
+    let me = SelfE in
+        send me 1
+    receive
+        (i) ->
+            PrintE i UnitE
+    done
+}
+
+create sender
+
+let sender = Behaviour "sender" [] (LetE "me" (SelfE) (SendE "me" (NumberE 1))) [(["i"], PrintE "done" (VarE i))]
+let prog = Program [sender] (Instantiation "sender" [])
+
+let chatBehaviour = Behaviour "chatterbox" ["mate"] (SendE "mate" [SelfE]) [(["x"], PrintE "received" UnitE)]
+let ackBehaviour = Behaviour "acknowledge" [] UnitE [(["actor"], SendE "actor" [UnitE])]
+let starterBehaviour = Behaviour "starter" [] (LetE "mate" (CreateE "acknowledge" []) (CreateE "chatterbox" [VarE "mate"])) [([], UnitE)]
+let progBehaviours = [chatBehaviour, ackBehaviour, starterBehaviour]
+
+let prog = Program progBehaviours (Instantiation "starter" [])
+
+eval (create starter ()) env benv ros
+
+env = []
+benv = [(chatterbox, (blah1)), (acknowledge, (blah2)), (starter, (blah3))]
+ros = []
+
+create starter ()
+
+-> (CreateE starter ()) env benv ros
+-> create (behaviourLookup starter benv) (eval () env benv ros) ros
+-> (behaviourLookup starter benv)
+-> returns (blah3) 
+-> (eval () env benv)
+-> returns () (value)
+-> create blah3 () ros
+
+ros = [{address=1, behaviour=blah3, params=(), inbox=[]}]
+
+actor starts execution
+
+-> let mate = create acknowledge in
+        create chatterbox (mate)
+-> (LetE mate (create acknowledge) (create chatterbox (mate)) env benv ros
+-> eval (create chatterbox (mate)) (addBinding mate (eval (create acknowledge) env benv ros)) benv ros
+
+interpreter has to bind all the behaviours into the env, in the format of @name?
+
+So, I'm trying to work out how to represent Actors in this system.
+So far I've defined a Actor Record type, with address :: Int, behaviour :: Behaviour, params :: ActualParams, inbox :: []. 
+First I tried to have a separate environment for variables, actors and behaviours. 
+That got messy, so now I have just one environment with everything, with the full list of actors being stored in the @actors name, which you can't legally name something in the language, so it'll never be accidentally used by people.
+A similar thing is in place for behaviours.
+However, I'm having a bit of trouble; I can't wrap my head around the create function. 
+This is what I call when handed a CreateE in eval, and it takes a behaviour name, some params and the current environment.
+First of all, looking up the behaviour is a pain in the ass because I have to prepend @ to it, and it's in a datatype. 
+Second, when I add it to the list of actors, it's pointless. I'm not calling any subsequent code with this new environment, so it just gets ignored.
+How am I supposed to store actors? They need to be everywere :'(`

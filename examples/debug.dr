@@ -1,0 +1,68 @@
+behaviour alice (kpb ksa) {
+    // change to be impostor's address. kpb is actually kpi
+    let bob_address = () in
+    let bob_public_key = kpb in
+    let my_nonce = "alice nonce" in
+    let ksa = ksa in
+        send bob_address (encrypt my_nonce kpb, self) 
+    receive
+        // response from impostor (who just passed on msg unchanged)
+        // both nonces are encrypted with alice's public key
+        (EncryptedV na_enc, EncryptedV nb_enc) ->
+            let na = decrypt na_enc ksa in
+            let nb = decrypt nb_enc ksa in
+                send bob_address (encrypt nb kpb)
+    done
+}
+
+behaviour bob (kpa ksb) {
+    // kpa here is alice's public key; impostor cannot decrypt
+    let kpa = kpa in
+    let ksb = ksb in
+    let my_nonce = "bob nonce" in
+        ()
+    receive
+        // message from impostor
+        // "alice_address_enc" is actually impostor's address
+        (EncryptedV na_enc, EncryptedV alice_address_enc) ->
+            let na = decrypt na_enc ksb in
+            let alice_address = decrypt na_enc ksb in
+                send alice_address (encrypt na kpa, encrypt my_nonce kpa) 
+    done
+}
+
+behaviour impostor (bob alice kpb ksi) {
+    let bob_adress = bob in
+    let alice_address = alice in
+    let kpb = kpb in
+    let ksi = ksi in
+        ()
+    receive
+        // pass on message from alice to bob, making sure to change the encryption
+        // change alice's address for impostor's
+        // impostor learns first nonce
+        (EncryptedV na_enc, ActorV alice_address) ->
+            let na = decrypt na_enc ksi in
+                send bob_address (encrypt na kpb, encrypt self kpb)          
+
+        // response from bob
+        (EncryptedV na_enc, EncryptedV nb_enc) ->
+            send alice_address (na_enc, nb_enc)
+
+        // second message from alice; this is where impostor learns second nonce
+        (EncryptedV nb_enc) ->
+            let nb = decrypt nb_enc ksi in
+                send bob_address (encrypt nb kpb)
+    done
+}
+
+behaviour starter () {
+    let bob = create bob ("kpa" "ksb") in
+    let alice = create alice ("kpb" "ksa") in
+        impostor = create impostor (bob alice "kpb" "ksi")
+    receive 
+        () -> ()
+    done
+}
+
+create alice ("kpb" "ksa")

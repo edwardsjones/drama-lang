@@ -1,0 +1,12 @@
+behaviour sender (first second third) {
+    let me = self in
+        send me (first, second)
+    receive
+        (x) ->
+            ()
+        (x, y) ->
+            send me (x)
+    done
+}
+
+create sender (1 2 3)

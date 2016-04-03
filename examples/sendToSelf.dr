@@ -1,0 +1,10 @@
+behaviour sender () {
+    let me = self in
+        print sending send me (1)
+    receive
+        (NumberV i) ->
+            ()
+    done
+}
+
+create sender ()

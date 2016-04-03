@@ -1,0 +1,31 @@
+behaviour producer () {
+    ()
+    receive 
+        (id, msg) ->
+            if (msg == "ready") then 
+                { send id ("job") }
+             else 
+                { () }
+    done
+}
+
+behaviour consumer (prod) {
+    send prod (self, "ready")
+    receive 
+        (job) ->
+            if (job == "stop") then 
+                { () } 
+            else 
+                { send prod (self, "ready") }
+    done  
+}
+
+behaviour creater () {
+    let prod = create producer () 
+    in  create consumer (prod)
+    receive
+        () -> ()
+    done
+}
+
+create creater ()

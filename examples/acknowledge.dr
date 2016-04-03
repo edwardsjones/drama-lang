@@ -1,0 +1,25 @@
+behaviour chatterbox (mate) {
+    print sent send mate (self)
+    receive
+        (NumberV x) -> 
+            print received ()
+    done
+}
+
+behaviour acknowledge () {
+    ()
+    receive
+        (ActorV adr) ->
+            print acked send adr (1)
+    done
+}
+
+behaviour starter () {
+    let ack = create acknowledge () in
+        create chatterbox (ack)
+    receive
+        () -> ()
+    done
+}
+
+create starter ()

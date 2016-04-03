@@ -1,0 +1,282 @@
+back bug at end is due to not updating the ticket list when execution finishes
+
+3rd March - 
+
+-tabs=DONE
+    -overview=DONE
+        -get dropdown to close=DONE
+        -get text to stay in dropdown=DONE
+        -wire up actor icons=DONE
+        -wire up behaviours=DONE
+        -wire up dropdown to populate msgs on click=DONE
+        -get individual ones working=DONE
+        -just dropdowns at start=DONE
+        -get to work with no state=DONE
+        -update on step, not remove=DONE
+        -reset on start=DONE
+        -allow scheduling=DONE
+            -radio button for each=DONE
+            -js so value is aid=DONE
+            -get aid on click=DONE
+            -change currentaid accordingly=DONE
+            -button should be before table=DONE
+            -disabled when no actor selected=DONE
+    -in depth view=DONE
+        -current view=DONE
+    -examples=DONE
+        -sendtoself=DONE
+        -acknowledge=DONE
+        -prod cons=DONE
+        -needhamschroeder=DONE
+
+-fix self bug=DONE
+-possible solution to needham problem (can't initialise)=DONE
+    -could change sendE to take NumberV's as ActorV's=DONE
+-fix it too=DONE
+-refactor needham program to be on one line in interface=DONE
+-version where impostor doesn't learn key=DONE
+-comma separated args for creation=DONE
+-msg editor resetting=DONE
+-clean up js=DONE
+    -take long strings into own methods, taking params for changing parts=DONE
+    -where long strings unavoidable (examples), put in separate file=DONE
+-msg editor needs to be turned on=DONE
+-charAt for aids; not sufficient. needs to be parseInt on substring=DONE
+-fix tool tip=DONE
+-fix encryption (two keys)=DONE
+-error handling
+    -drop msgs with no match
+        -Interpreter
+        -Server
+        -Test
+        -JS
+-jshint
+
+26th February - 2nd March
+
+Second Examiner notes:
+
+-tests on language
+-make sure tool is fit for purpose
+    -doing now
+        -bank of examples=DONE
+            -put needham-schroeder in when ready=DONE
+        -all actors inboxes at once=DONE
+        -message editor should have to be turned on (not actual part of language)=DONE
+    -improve ui
+        -syntax highlighting
+        -which behaviour is executing
+        -errors to come through
+        -tooltips
+-finish needham schroeder=DONE
+    -implement encrypt and decrypt=DONE
+        -encrypt=DONE
+            -just hide the value from the user=DONE
+            -haskell type EncryptedV Value=DONE
+            -holds actual value in it, but requires key to unpack=DONE
+        -decrypt=DONE
+            -check keys match, error if not=DONE
+    -change UI to facilitate=DONE
+        -user can see a value is encrypted and key=DONE
+        -editing of encrypted values=DONE
+    -implement comments=DONE
+    -implement type checking on messages=DONE
+        -changes to tokens=DONE
+        -changes to types=DONE
+        -changes to happy=DONE
+        -changes to interpreter=DONE
+    -have fixed prog and broken prog=DONE
+
+19th February - 25th February
+
+-messages are reversed=DONE
+-remove table when start is pressed=DONE
+-code display=DONE
+-change lists to be not nested=DONE
+
+-message editor panel
+    -select type from dropdown=DONE
+    -update inputs as necessary=DONE
+    -save button in panel-header=DONE
+    -validate values=DONE
+    -edit values in state=DONE
+    -update values on actor display=DONE
+    -reset on stepping/starting=DONE
+    -dropup for type selectors=DONE
+    -get_table cleanup=DONE
+    -alerts for bad values
+    -tooltips on save
+    -adjust input sizes
+
+-needham-schroeder
+    -a requests b's public key from s
+    -s responds with public key of b, with b's identity, all of which is encrypted with s's private key
+    -a decrypts using s's public key, to get b's public key
+    -a chooses a nonce, and sends it to b along with his identity, all encrypted with b's public key
+    -b decrypts using private key, and now knows a wants to communicate. b requests a's public key from server
+    -server responds with public key of a, and a's identity, encrypted with s's private key
+    -b chooses another nonce, and sends both nonces to a, encrypted with a's public key (proving ownership of b's private key)
+    -a confirms the nonce b sent, proving ability to decrypt with a's secret key
+
+    -can be broken by a man in the middle attack if the impostor can persuade a to communicate with him instead of b directly
+    -instead of sending the nonce to b, a sends it to i, encrypted with i's public key
+    -i decrypts it, then encrypts it with b's public key, and send it on (now knows a's nonce)
+    -b sends his nonce to i, encrypted with a's public key
+    -i relays it to a
+    -a decrypts b's nonce, and sends it to i, who learns it and then relays it 
+
+behaviour alice (server, kps) {
+    let my_nonce = nonce in
+        send server ("bob", self) 
+    receive
+        // response from server
+        (kpb, bob) ->
+            let bob_public = decrypt kpb kps in
+            let bob_identity = decrypt bob kps in
+            let na = encrypt my_nonce bob_public in
+            let my_identity = encrypt self bob_public in
+                // send bob first nonce
+                send bob_identity (na, my_identity) 
+
+        // response from bob with both nonces
+        (na, nb) ->
+            let na_decrypted = decrypt na ksa in
+                if (na_decrypted == my_nonce) then {
+                    let nb_decrypted = decrypt nb ksa in
+                    let nb_encrypted = encrypt nb_decrypted bob_public in
+                        send bob_identity (nb_decrypted)
+                } else {
+                    ()
+                }
+    done
+}
+
+behaviour bob (server, kps) {
+    let my_nonce = nonce in
+        ()
+    receive
+        // message from alice with her nonce
+        (na, alice) ->
+    
+            // this needs to be global 
+            let na_decrypted = decrypt na ksb in
+
+            let alice_identity = decrypt alice ksb in
+                // request key from server
+                send server ("alice", self)
+
+        // response from server
+        (kpa, alice) ->
+            let alice_public = decrypt kpa kps in
+            let alice_identity = decrypt alice kps in
+            let nb = encrypt my_nonce alice_public in
+            let na = encrypt na_decrypted alice_public in
+                // send bob both nonces, confirming alice's identity to bob
+                send alice_identity (na, nb)
+
+        // message from alice with bob's nonce
+        (nb) ->
+            let nb_decrypted = decrypt nb ksb in
+            if (nb_decrypted == my_nonce) {
+                // start communications
+            } else {
+                // oh dear
+            }
+    done
+}
+
+behaviour server (kss, kps, bob_address, alice_address) {
+    let kss = kss in
+    let kps = kps in
+    let bob_adress = bob_adress in
+    let alice_address = alice_address in
+        ()
+    receive
+        (identity, return_address) ->
+            if (identity == "bob") then {
+                let kpb = encrypt 3847 kss in
+                let bob_address_enc = encrypt bob_address kss in
+                    send return_address (kpb, bob_address_enc)
+            } else {
+                if (identity == "alice") then {
+                    let kpa = encrypt 8281 kss in
+                    let alice_address_enc = encrypt alice_address kss in
+                        send return_address (kpa, alice_address_enc)
+                } else {
+                    ()
+                }
+            }
+    done
+}
+
+behaviour starter () {
+    let server = create server (1234, 5678, 2, 3) in
+    let bob = create bob (server, 5678) in
+    let alice = create alice (server, 5678) in
+    ()
+    receive 
+        () -> ()
+    done
+}
+
+create starter ()
+
+suggested langauage changes:
+-lets global
+
+-ellipse after msg which is too long
+-step backwards-fix so can step back from end
+-send self (msg) doesn't work; self is a SelfTk, not an IdentifierTk
+-comma between args would be nice
+
+11th - 19th February
+
+-lists=DONE
+    -structure
+    -cons
+    -head
+    -tail
+    -init
+    -last
+    -length
+-fix arity shit=DONE
+    -was in match arity, you've changed it to match on fps as opposed to length on the tuple (i.e. always the same...), just build,     test, and see what happens
+-if statements=DONE
+-arithmetic=DONE
+    -operations
+    -gt/lt
+-bools=DONE
+    -refactor
+-equality checking=DONE
+    -eq
+    -not equal
+
+behaviour producer () {
+    ()
+    receive 
+        (id, msg) ->
+            if (msg == "ready") 
+                then send id ("job")
+                else () 
+    done
+}
+
+behaviour consumer (prod) {
+    send prod (self, "ready")
+    receive 
+        (job) ->
+            if (job == "stop") 
+                then ()
+                else print "done" send prod (self, "ready")
+    done  
+}
+
+behaviour creater () {
+    let prod = create producer () 
+    in  create consumer (prod)
+    receive
+        () -> ()
+    done
+}
+
+based on program found at http://cs.nyu.edu/~lerner/spring12/Preso01-Actors.pdf

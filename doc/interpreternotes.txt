@@ -1,0 +1,16 @@
+-Create the inital environment by binding the behaviours
+-Instantiate the first actor
+-Run step function with this actorinstance
+-Step then evaluates a small chunk of code, and calls scheduler
+-Scheduler picks out an actor from the list of actors
+-Step is then run again
+-Repeat untill execution finished 
+
+(need to iron out implementation details, but that's a slightly more focused view of what will happen)
+
+-In the tool, the scheduler will be the user
+
+1. What should the message type contain? 
+2. For the scheduler, I need some way of knowing which actors are ready to execute.
+    -For this, I can use an event queue which will look at which actors have messages in their mailboxes
+    -But what about pre-receive statements? 

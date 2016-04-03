@@ -1,0 +1,62 @@
+behaviour alice (kpb ksa) {
+    // change to be impostor's address. kpb is actually kpi
+    // kpb is kpi
+    let bob_address = 4 in
+    let my_nonce = "alice nonce" in
+        send bob_address (encrypt my_nonce kpb, self) 
+    receive
+        // response from impostor (who just passed on msg unchanged)
+        // both nonces are encrypted with alice's public key
+        (EncryptedV na_enc, EncryptedV nb_enc) ->
+            let na = decrypt na_enc ksa in
+            let nb = decrypt nb_enc ksa in
+                send bob_address (encrypt nb kpb)
+    done
+}
+
+behaviour impostor (bob alice kpb ksi) {
+    ()
+    receive
+        // pass on message from alice to bob, making sure to change the encryption
+        // change alice's address for impostor's
+        // impostor learns first nonce
+        (EncryptedV na_enc, ActorV alice_address) ->
+            let na = decrypt na_enc ksi in
+                send bob_address (encrypt na kpb, encrypt self kpb)          
+
+        // response from bob
+        (EncryptedV na_enc, EncryptedV nb_enc) ->
+            send alice_address (na_enc, nb_enc)
+
+        // second message from alice; this is where impostor learns second nonce
+        (EncryptedV nb_enc) ->
+            let nb = decrypt nb_enc ksi in
+                send bob_address (encrypt nb kpb)
+    done
+}
+
+// kpa here is alice's public key; impostor cannot decrypt
+behaviour bob (kpa ksb) {
+    let my_nonce = "bob nonce" in
+        ()
+    receive
+        // message from impostor
+        // "alice_address_enc" is actually impostor's address
+        (EncryptedV na_enc, EncryptedV alice_address_enc) ->
+            let na = decrypt na_enc ksb in
+            let alice_address = decrypt na_enc ksb in
+                send alice_address (encrypt na kpa, encrypt my_nonce kpa) 
+    done
+}
+
+behaviour starter () {
+    let bob = create bob ("alice key" "bob key") in
+    let alice = create alice ("impostor key" "alice key") in
+    let impostor = create impostor (bob alice "bob key" "impostor key") in
+        ()
+    receive 
+        () -> ()
+    done
+}
+
+create starter ()

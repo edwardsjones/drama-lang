@@ -192,8 +192,8 @@ instance MonadState s (Stepped s) where
     put newState
         = Stepped $ \_ -> (Done (), newState)
 
--- In order for a Stateful monad to be a member of the Stepped monads, it must
--- implement defineStep.
+-- In order for a monad to be a MonadStepped, it must define the defineStep
+-- function, as well as be a Stateful monad. 
 class MonadState s m => MonadStepped s m where
     defineStep :: m a -> m a
 
@@ -224,6 +224,7 @@ instance MonadStepped s m => MonadStepped s (ExceptT e m) where
 -- Here's where the stepping happens; takes a Stepped (function from a state
 -- to a SteppedResult), a state, and produces the continuation and the state
 -- after applying Stepped
+{-
 step :: Stepped s a -> s -> (Maybe (Stepped s a), s)
 step (Stepped f) s
 
@@ -235,6 +236,14 @@ step (Stepped f) s
 
         -- If it's Suspended, return the continuation and the state
         (Suspended k, s') -> (Just k, s')
+-}
+step m s
+    = let f = runExceptT m in
+      case f s of
+        Left err            ->  err
+        Right susp          ->  case susp of
+                                    (Done x, s')        -> (Nothing, s')
+                                    (Suspended k, s')   -> (Just k, s')
     
 -- Lens which will get the LocalEnv of the actor id specified in the state
 isLocalEnv :: Lens' IState LocalEnv
@@ -266,7 +275,18 @@ runProgram (Program bs inst)
 
 -- Same as runProgram, except it allows the user to step through the execution
 -- by way of the stepper function.
---step :: Stepped s a -> s -> (Maybe (Stepped s a), s)
+-- runExceptT :: ExceptT e m a -> m (Either e a)
+-- Stepped (
+{-
+        Couldn't match type ‘Either String ()’
+                       with ‘(SteppedResult t4 t5, t)’
+        Expected type: ExceptT
+                         (Maybe (Stepped t4 t5), t) ((->) IState) (SteppedResult t4 t5, t)
+          Actual type: ExceptT
+                         (Maybe (Stepped t4 t5), t) ((->) IState) (Either String ())
+          maybeSusp :: Maybe (Stepped t4 t5)
+          is' :: t (bound at src/Interpreter.hs:281:23)
+          ‘(runExceptT (instantiate inst >> scheduler))’
 stepProgram :: Program -> IO ()
 stepProgram (Program bs inst)  
     = let (maybeSusp, is') = flip step is (runExceptT (instantiate inst >> scheduler))
@@ -277,15 +297,20 @@ stepProgram (Program bs inst)
 
 -- Takes a Maybe (Stepped IState a) and the current state, and steps it 
 -- forward one step everytime the user presses enter. 
-stepper :: (Maybe (Stepped IState a)) -> IState -> IO ()
-stepper maybeSusp is
-    = case maybeSusp of
-        Just susp -> let (nextSusp, is') = step susp is 
-                     in do  hSetBuffering stdin NoBuffering
-                            input <- getLine
-                            prettyPrintState is'
-                            stepper nextSusp is'
-        Nothing   -> putStrLn "Done"
+-- instantiate :: (MonadStepped IState m, MonadError String m) => Instantiation -> m ActorId
+-- scheduler :: (MonadStepped IState m, MonadError String m) => m ()
+--stepper :: Either String (Maybe (Stepped IState a)) -> IState -> IO ()
+stepper eitherErrSusp is
+    = case eitherErrSusp of
+        Left err        ->  putStrLn err
+        Right maybeSusp ->  case maybeSusp of 
+                                Just susp -> let (nextSusp, is') = step susp is 
+                                             in do  hSetBuffering stdin NoBuffering
+                                                    input <- getLine
+                                                    prettyPrintState is'
+                                                    stepper nextSusp is'
+                                Nothing   -> putStrLn "Done"
+-}
 
 prettyPrintState :: IState -> IO ()
 prettyPrintState is
@@ -618,7 +643,7 @@ evalExp aid (DecryptE enc keyExp)
     = do
         encValue@(EncryptedV value actualKey) <- lookupName enc
         keyValue@(StringV givenKey) <- evalExp aid keyExp
-        if givenKey == (reverse actualKey) then return value else error "Wrong key used to decrypt."
+        if givenKey == (reverse actualKey) then return value else throwError "Wrong key used to decrypt."
 
 evalExps :: (MonadStepped IState m, MonadError String m) => ActorId -> [Exp] -> m [Value]
 evalExps _ [] 

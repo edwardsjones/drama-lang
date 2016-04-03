@@ -1,0 +1,1 @@
+[Behaviour,Identifier "sender",OpenBrace,Let,Identifier "me",Equals,Self,In,Send,Identifier "me",Int 1,Receive,OpenPar,Identifier "i",ClosePar,Handle,Identifier "print",Identifier "i",OpenPar,ClosePar,Done,CloseBrace,Create,Identifier "sender"]

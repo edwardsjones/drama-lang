@@ -1,0 +1,15 @@
+A1 knows about A2, sends message with name. A2 now knows name, sends ack back to A1.
+
+pseudocode:
+
+behaviour chatter friend
+    send friend (address)
+
+behaviour acknowledge
+    receive 
+        (address) -> 
+            send address ("ack)
+    done
+
+let mate = create acknowledge in
+    create chatter mate
