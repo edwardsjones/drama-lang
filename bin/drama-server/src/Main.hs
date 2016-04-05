@@ -5,8 +5,8 @@ module Main (main) where
 
 import Control.Applicative
 import Control.Concurrent.STM
-import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Exception                    as E
 
 import Data.Default.Class
 import Data.String
@@ -25,7 +25,7 @@ import Network.Wai.Middleware.Cors
 import Web.Scotty.Trans
 
 newtype AppState 
-    = AppState { serverTickets :: M.Map Int [(Maybe (I.Stepped I.IState (Either String ())))] }
+    = AppState { serverTickets :: M.Map Int [(Maybe (I.Stepped I.IState ()))] }
 
 instance Default AppState where
     def 
@@ -55,14 +55,20 @@ app = do
     middleware simpleCors
     post "/programs" $ do
         progByteStr <- body
-        num <- liftIO $ (R.randomRIO (0,30000) :: IO Int)
         let progStr = B.unpack progByteStr
-            ast = P.parseDrama $ L.alexScanTokens progStr
-            (maybeSusp, is) = setupProgram ast
-            clientTicket = S.ClientTicket { S.ticketID = num, S.state = is, S.ready = [0] }
-        webM $ modify $ \as -> let newMap = M.insert num [maybeSusp] (serverTickets as)
-                               in as { serverTickets = newMap }
-        json clientTicket
+            dummyGenv = I.GlobalEnv { I._geNextAvailableActor = 0, I._geBehaviours = M.empty, I._geActorInstances = M.empty }
+            dummy = I.IState { I._isGlobalEnv = dummyGenv, I._isCurrentAID = 0 }
+        num <- liftIO $ (R.randomRIO (0,30000) :: IO Int)
+        result <- liftIO (try (let ast = P.parseDrama $ L.alexScanTokens progStr
+                                   (maybeSusp, is) = setupProgram ast
+                               in  do return (maybeSusp, is)) :: IO (Either SomeException (Maybe (I.Stepped I.IState ()), I.IState)))
+        case result of
+            Left ex -> handler ex
+            Right (maybeSusp, is) -> do
+                                        let clientTicket = S.ClientTicket { S.ticketID = num, S.state = is, S.ready = [0] }
+                                        webM $ modify $ \as -> let newMap = M.insert num [maybeSusp] (serverTickets as)
+                                                               in as { serverTickets = newMap }
+                                        json clientTicket
 
     post "/step" $ do
         ticket <- jsonData :: ActionT Text WebM S.ClientTicket
@@ -92,17 +98,33 @@ app = do
         webM $ modify $ \as -> as { serverTickets = M.adjust tail suspID (serverTickets as) }
         json newTicket 
 
+handler :: SomeException -> ActionT Text WebM ()
+handler e = case fromException e of 
+                Just I.BehaviourLookupFailed  -> text "blf"
+                Just I.ActorLookupFailed      -> text "alf"
+                Just I.NameLookupFailed       -> text "nlf"
+                Just I.NoMatchingReceives     -> text "nmr"
+                Just I.DecryptionFailed       -> text "dcf"
+                Just I.NoBehavioursDefined    -> text "nbd"
+                Just I.LocalEnvLookupFailed   -> text "llf"
+                Nothing                       -> text "not"
+
+handleParseError :: SomeException -> ActionT Text WebM ()
+handleParseError e = case fromException e of
+                        Just T.ParseError   -> text "parse"
+                        Nothing             -> text "not"
+
 -- Takes a Program, and returns a Maybe (Stepped s a) and the state after 
 -- the first actor has been instantiated
-setupProgram :: T.Program -> (Maybe (I.Stepped I.IState (Either String ())), I.IState)
+setupProgram :: T.Program -> (Maybe (I.Stepped I.IState ()), I.IState)
 setupProgram (T.Program bs inst) 
-    = flip I.step is (runExceptT firstStepped)
+    = I.step firstStepped is
     where 
         genv = I.initialEnv bs
         is = I.IState { I._isGlobalEnv = genv, I._isCurrentAID = 0 }
         firstStepped = (I.instantiate inst >> I.scheduler)
 
-ticketLookup :: Int -> M.Map Int [(Maybe (I.Stepped I.IState (Either String ())))] -> Maybe (I.Stepped I.IState (Either String ()))
+ticketLookup :: Int -> M.Map Int [(Maybe (I.Stepped I.IState ()))] -> Maybe (I.Stepped I.IState ())
 ticketLookup id tickets
     = case lookupResult of
         Just susps  -> head susps

@@ -2,6 +2,7 @@
 module Happy where
 import Tokens
 import Types
+import Control.Exception
 }
 
 %name parseDrama
@@ -123,6 +124,6 @@ ActualParam     : Exp                                       { $1 }
 {
 
 parseError :: [Token] -> a
-parseError _ = error "Parse error."
+parseError _ = throw ParseError
 
 }

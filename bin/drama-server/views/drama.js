@@ -12,6 +12,7 @@ $(function () {
     $(".start").on("click", function () {
         var progStr = $(".program").val();
         $.post(server + "/programs", progStr, function (data) {
+            console.log(data);
             $(".step").attr("disabled", false);
             $(".back").attr("disabled", true);
             ticket = data;

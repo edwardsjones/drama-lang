@@ -5,6 +5,7 @@ module Types where
 
 import Data.Aeson
 import GHC.Generics
+import Control.Exception
 
 data Program
     = Program 
@@ -79,3 +80,9 @@ data Exp
     | IfE Exp Exp Exp 
     | EqualityE Exp Exp String
     deriving (Generic, ToJSON, FromJSON, Eq, Show)
+
+data ParseError
+    = ParseError
+    deriving (Eq, Show)
+
+instance Exception ParseError
