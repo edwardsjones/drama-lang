@@ -1,0 +1,29 @@
+behaviour test_names () {
+    let x = 1 in
+        ()
+    receive
+        (NumberV x) ->
+            if (x == 2) then {
+                print pass ()
+            } else {
+                print fail ()
+            }
+    done
+}
+
+behaviour sender (adr) {
+    send adr (2)
+    receive
+        () -> ()
+    done
+}
+
+behaviour initial () {
+    let tester = create test_names () in
+        create sender (tester) 
+    receive 
+        () -> ()
+    done
+}
+
+create initial ()

@@ -1,0 +1,37 @@
+behaviour test_sending () {
+    ()
+    receive
+        (UnitV v) ->
+            print received1 ()
+        (UnitV v, UnitV w) ->
+            print received2 ()
+        (UnitV v, UnitV w, UnitV x) ->
+            print received3 ()
+        (UnitV v, UnitV w, UnitV x, UnitV y) ->
+            print received4 ()
+        (UnitV v, UnitV w, UnitV x, UnitV y, UnitV z) ->
+            print received5 ()
+    done
+}
+
+behaviour sender (adr) {
+    let v = send adr (()) in
+    let w = send adr ((),()) in
+    let x = send adr ((),(),()) in
+    let y = send adr ((),(),(),()) in
+    let z = send adr ((),(),(),(),()) in
+        send adr ("this will get dropped")
+    receive
+        () -> ()
+    done
+}
+
+behaviour initial () {
+    let tester = create test_sending () in
+        create sender (tester) 
+    receive 
+        () -> ()
+    done
+}
+
+create initial ()

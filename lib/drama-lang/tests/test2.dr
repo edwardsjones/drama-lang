@@ -1,0 +1,15 @@
+behaviour test_lists () {
+    let xs = [1,2,3,4] in
+    let hxs = head xs in
+    let txs = tail xs in
+    let lxs = last xs in
+    let ixs = init xs in
+    let len = length xs in
+    let built = "hi" : xs in
+        ()
+    receive 
+        () -> ()
+    done
+}
+
+create test_lists ()

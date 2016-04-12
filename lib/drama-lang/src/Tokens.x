@@ -14,7 +14,6 @@ tokens :-
     create                          { \s -> CreateTk }
     behaviour                       { \s -> BehaviourTk }
     print                           { \s -> PrintTk }
-    address                         { \s -> AddressTk }
     send                            { \s -> SendTk }
     receive                         { \s -> ReceiveTk }
     done                            { \s -> DoneTk }
@@ -101,8 +100,4 @@ data Token
     | OpenBraceTk         
     | CloseBraceTk  
     deriving (Eq, Show)
-
-main = do
-    s <- getContents
-    print (alexScanTokens s)
 }

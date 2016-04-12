@@ -1,0 +1,33 @@
+behaviour test_arithmetic () {
+    let a = 4 + 11 in
+    let b = 5 - 2 in
+    let c = 8 / 2 in
+    let d = 8 / 3 in
+    let e = 4 * 5 in
+        if (a == 15) then {
+            if (b == 3) then {
+                if (c == 4) then {
+                    if (d == 2) then {
+                        if (e == 20) then {
+                            print arithmetic_pass ()
+                        } else {
+                            print multiplication_fail ()
+                        }
+                    } else {
+                        print div_fail ()
+                    }
+                } else {
+                    print div_fail ()
+                }
+            } else {
+                print subtract_fail ()
+            }
+        } else {
+            print addition_fail ()
+        }
+    receive 
+        () -> ()
+    done
+}
+
+create test_arithmetic ()

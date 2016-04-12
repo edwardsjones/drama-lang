@@ -1,0 +1,111 @@
+behaviour number_eq () {
+    if (1 == 1) then {
+        if (1 == 2) then {
+            print fail ()
+        } else {
+            print eq_pass ()
+        }
+    } else {
+        print fail ()
+    }
+    receive 
+        () -> ()
+    done
+}
+
+behaviour number_ineq () {
+    if (2 != 1) then {
+        if (1 != 1) then {
+            print fail ()
+        } else {
+            print ineq_pass ()
+        }
+    } else {
+        print fail ()
+    }
+    receive 
+        () -> ()
+    done
+}
+
+behaviour number_gt () {
+    if (3 > 2) then {
+        if (2 > 2) then {
+            print fail ()
+        } else {
+            print gt_pass ()
+        }
+    } else {
+        print fail ()
+    }
+    receive 
+        () -> ()
+    done
+}
+
+behaviour number_gte () {
+    if (2 >= 2) then {
+        if (3 >= 2) then {
+            if (1 >= 2) then {
+                print fail ()
+            } else {
+                print gte_pass ()
+            }
+        } else {
+            print fail ()
+        }
+    } else {
+        print fail ()
+    }
+    receive 
+        () -> ()
+    done
+}
+
+behaviour number_lt () {
+    if (1 < 2) then {
+        if (2 < 2) then {
+            print fail ()
+        } else {
+            print lt_pass ()
+        }
+    } else {
+        print fail ()
+    }
+    receive 
+        () -> ()
+    done
+}
+        
+behaviour number_lte () {
+    if (2 <= 2) then {
+        if (1 <= 2) then {
+            if (3 <= 2) then {
+                print fail ()
+            } else {
+                print lte_pass ()
+            }
+        } else {
+            print fail ()
+        }
+    } else {
+        print fail ()
+    }
+    receive 
+        () -> ()
+    done
+}
+
+behaviour initial () {
+    let a = create number_eq () in
+    let b = create number_ineq () in
+    let c = create number_gt () in
+    let d = create number_gte () in
+    let e = create number_lt () in
+        create number_lte () 
+    receive 
+        () -> ()
+    done
+}
+
+create initial ()

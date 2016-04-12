@@ -1,0 +1,56 @@
+behaviour tester () {
+    ()
+    receive
+        (NumberV x) ->
+            if (x == 1) then {
+                print num_pass ()
+            } else {
+                print fail ()
+            }
+
+        (StringV x) ->
+            if (x == "a") then {
+                print str_pass ()
+            } else {
+                print fail ()
+            }
+
+        (UnitV x) ->
+            if (x == ()) then {
+                print unit_pass ()
+            } else {
+                print fail ()
+            }
+        
+        (NumberV x, NumberV y) ->
+            if (x == 1) then {
+                if (y == 2) then {
+                    print arity_pass ()
+                } else {
+                    print fail ()
+                }
+            } else {
+                print fail ()
+            }
+    done
+}
+
+behaviour sender (adr) {
+    let a = send adr (1) in
+    let b = send adr ("a") in
+    let c = send adr (()) in
+        send adr (1, 2)
+    receive 
+        () -> ()
+    done
+}
+
+behaviour initial () {
+    let test = create tester () in
+        create sender (test)
+    receive 
+        () -> ()
+    done
+}
+
+create initial ()

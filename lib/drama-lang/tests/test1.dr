@@ -1,0 +1,17 @@
+behaviour test_values () {
+    let unit = () in
+    let address = self in
+    let t = true in
+    let f = false in
+    let str = " ,.!£$%^&*()-_?><@~ hasdfj 123 AJS " in
+    let empty_str = "" in
+    let num = 32 in
+    let xs = [1,2,3] in
+    let empty_xs = [] in
+        ()
+    receive
+        () -> ()
+    done
+}
+
+create test_values ()

@@ -35,3 +35,13 @@ Library
   Default-Language:   Haskell2010
   Ghc-Options:        
 
+Test-Suite tests
+  Type:               exitcode-stdio-1.0
+  Hs-Source-Dirs:     tests/
+  Main-Is:            Tests.hs
+  Default-Language:   Haskell2010
+  Build-Depends:      base
+                    , drama-lang
+                    , HTF
+                    , mtl
+                    , containers

@@ -1,0 +1,24 @@
+behaviour null () {
+    print third ()
+    receive
+        () -> ()
+    done
+}
+
+behaviour second () {
+    let x = create null () in
+        print second ()
+    receive 
+        () -> ()
+    done
+}
+
+behaviour initial () {
+    let x = create second () in
+        print first ()
+    receive
+        () -> ()
+    done
+}
+
+create initial () 

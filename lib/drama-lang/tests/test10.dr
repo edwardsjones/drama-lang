@@ -1,0 +1,13 @@
+behaviour test_encrypt () {
+    let enc = encrypt "test" "key" in
+        if ("test" == decrypt enc "yek") then {
+            print pass ()
+        } else {
+            print fail ()
+        }
+    receive 
+        () -> ()
+    done
+}
+
+create test_encrypt ()
