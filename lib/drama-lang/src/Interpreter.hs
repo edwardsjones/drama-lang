@@ -51,10 +51,8 @@ data InterpreterError
     = BehaviourLookupFailed
     | ActorLookupFailed
     | NameLookupFailed
-    | NoMatchingReceives
     | DecryptionFailed
     | NoBehavioursDefined
-    | LocalEnvLookupFailed
     deriving (Eq, Show) 
 
 instance Exception InterpreterError
@@ -250,7 +248,7 @@ isLocalEnv f is
         genv = _isGlobalEnv is
         aid = _isCurrentAID is
         instances = _geActorInstances genv
-        actor = M.findWithDefault (throw LocalEnvLookupFailed) aid instances
+        actor = M.findWithDefault (throw ActorLookupFailed) aid instances
         lenv = _aiEnv actor
         k lenv' = is { _isGlobalEnv = genv { _geActorInstances = M.insert aid (actor { _aiEnv = lenv' }) instances } }
 
@@ -382,25 +380,23 @@ receive ai rec
         isGlobalEnv . geActorInstances %= M.update (replaceActor ai') (_aiId ai)
 
         -- Find handler exp to use, and bind msg params
-        let (pats, handling) = matchMsg rec aps
-            fps = map snd pats
-            bindings = M.fromList (zip fps aps)
+        let result = matchMsg rec aps
+        case result of
+            Left exc    -> return UnitV
+            Right (pats, handling)  ->  let fps = map snd pats
+                                            bindings = M.fromList (zip fps aps)
+                                        in  do  lenv <- use isLocalEnv
+                                                isLocalEnv . leBindings %= M.union bindings
+                                                v <- evalExp aid handling
+                                                ai'' <- lookupActorInstance aid
 
-        -- Store env withouth msg bindings for after
-        lenv <- use isLocalEnv
+                                                -- Remove msg bindings
+                                                isLocalEnv . leBindings .= _leBindings lenv
+                                                lenv2 <- use isLocalEnv
+                                                let ai''' = ai'' { _aiEnv = lenv2 }
+                                                isGlobalEnv . geActorInstances %= M.update (replaceActor ai''') (_aiId ai''')
 
-        isLocalEnv . leBindings %= M.union bindings
-        v <- evalExp aid handling
-
-        ai'' <- lookupActorInstance aid
-
-        -- Remove msg bindings
-        isLocalEnv . leBindings .= _leBindings lenv
-        lenv2 <- use isLocalEnv
-        let ai''' = ai'' { _aiEnv = lenv2 }
-        isGlobalEnv . geActorInstances %= M.update (replaceActor ai''') (_aiId ai''')
-
-        return v
+                                                return v
 
 -- [Receive] = [(Pat, Exp)] = [([Type, FormalParam], Exp)]
 -- Receive = (Pat, Exp)
@@ -411,17 +407,17 @@ receive ai rec
 -- Used for finding which handling statement to use. Checks each of the msg 
 -- tuple types and compares them to the types specified in the Receive. If none
 -- are found to match, the msg is dropped.
-matchMsg :: [Receive] -> Message -> Receive
-matchMsg [] _ = throw NoMatchingReceives
+matchMsg :: [Receive] -> Message -> Either String Receive
+matchMsg [] _ = Left "No matches"
 matchMsg (r@(pat, exp) : rs) msg 
     = let expectedTypes = map fst pat 
           equalLength = (length expectedTypes == length msg) in
-          if equalLength && matchMsg' expectedTypes msg then r else matchMsg rs msg
+          if equalLength && matchMsg' expectedTypes msg then Right r else matchMsg rs msg
 
 matchMsg' :: [Type] -> [Value] -> Bool
 matchMsg' [] [] = True
-matchMsg' [] _ = throw NoMatchingReceives
-matchMsg' _ [] = throw NoMatchingReceives
+matchMsg' [] _ = False
+matchMsg' _ [] = False
 matchMsg' (t : ts) (v : vs)
     = case v of
         UnitV           -> if t == "UnitV" then matchMsg' ts vs else False

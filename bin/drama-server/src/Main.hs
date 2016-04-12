@@ -59,16 +59,19 @@ app = do
             dummyGenv = I.GlobalEnv { I._geNextAvailableActor = 0, I._geBehaviours = M.empty, I._geActorInstances = M.empty }
             dummy = I.IState { I._isGlobalEnv = dummyGenv, I._isCurrentAID = 0 }
         num <- liftIO $ (R.randomRIO (0,30000) :: IO Int)
-        result <- liftIO (try (let ast = P.parseDrama $ L.alexScanTokens progStr
-                                   (maybeSusp, is) = setupProgram ast
-                               in  do return (maybeSusp, is)) :: IO (Either SomeException (Maybe (I.Stepped I.IState ()), I.IState)))
-        case result of
-            Left ex -> handler ex
-            Right (maybeSusp, is) -> do
-                                        let clientTicket = S.ClientTicket { S.ticketID = num, S.state = is, S.ready = [0] }
-                                        webM $ modify $ \as -> let newMap = M.insert num [maybeSusp] (serverTickets as)
-                                                               in as { serverTickets = newMap }
-                                        json clientTicket
+        parseResult <- liftIO (try (let ast = P.parseDrama $ L.alexScanTokens progStr
+                               in  evaluate ast))
+        case parseResult of 
+            Left parseExc   ->  handleParseError parseExc
+            Right ast       ->  do  setupResult <- liftIO (try (let (maybeSusp, is) = setupProgram ast
+                                                                in  evaluate (maybeSusp, is)))
+                                    case setupResult of
+                                        Left ex ->  handler ex
+                                        Right (maybeSusp, is) -> do
+                                                                    let clientTicket = S.ClientTicket { S.ticketID = num, S.state = is, S.ready = [0] }
+                                                                    webM $ modify $ \as -> let newMap = M.insert num [maybeSusp] (serverTickets as)
+                                                                                           in as { serverTickets = newMap }
+                                                                    json clientTicket
 
     post "/step" $ do
         ticket <- jsonData :: ActionT Text WebM S.ClientTicket
@@ -77,13 +80,15 @@ app = do
             is = S.state ticket
             maybeSusp = ticketLookup suspID serverTix
         case maybeSusp of
-            Just susp   ->  let (nextSusp, is') = I.step susp is
-                                readyList = getReadyActors is'
-                                newTicket = S.ClientTicket { S.ticketID = suspID, S.state = is', S.ready = readyList }
-                            in do
-                                --change list to have most recent susp first
-                                webM $ modify $ \as -> as { serverTickets = M.insertWith (++) suspID [nextSusp] (serverTickets as) }
-                                json newTicket
+            Just susp   ->  do  stepResult <- liftIO (try (evaluate (I.step susp is)))
+                                case stepResult of
+                                    Left ex ->  handler ex
+                                    Right (nextSusp, is')   ->  let readyList = getReadyActors is'
+                                                                    newTicket = S.ClientTicket { S.ticketID = suspID, S.state = is', S.ready = readyList }
+                                                                in do
+                                                                    --change list to have most recent susp first
+                                                                    webM $ modify $ \as -> as { serverTickets = M.insertWith (++) suspID [nextSusp] (serverTickets as) }
+                                                                    json newTicket
             Nothing     ->  do 
                                 liftIO $ print (M.size serverTix) 
                                 text "done"
@@ -98,24 +103,20 @@ app = do
         webM $ modify $ \as -> as { serverTickets = M.adjust tail suspID (serverTickets as) }
         json newTicket 
 
-handler :: SomeException -> ActionT Text WebM ()
-handler e = case fromException e of 
-                Just I.BehaviourLookupFailed  -> text "blf"
-                Just I.ActorLookupFailed      -> text "alf"
-                Just I.NameLookupFailed       -> text "nlf"
-                Just I.NoMatchingReceives     -> text "nmr"
-                Just I.DecryptionFailed       -> text "dcf"
-                Just I.NoBehavioursDefined    -> text "nbd"
-                Just I.LocalEnvLookupFailed   -> text "llf"
-                Nothing                       -> text "not"
+handler :: I.InterpreterError -> ActionT Text WebM ()
+handler e = case e of 
+                I.BehaviourLookupFailed  -> text "blf"
+                I.ActorLookupFailed      -> text "alf"
+                I.NameLookupFailed       -> text "nlf"
+                I.DecryptionFailed       -> text "dcf"
+                I.NoBehavioursDefined    -> text "nbd"
+                _                        -> text "not"
 
-handleParseError :: SomeException -> ActionT Text WebM ()
-handleParseError e = case fromException e of
-                        Just T.ParseError   -> text "parse"
-                        Nothing             -> text "not"
+handleParseError :: T.ParseError -> ActionT Text WebM ()
+handleParseError e = case e of
+                        T.ParseError    -> text "parse"
+                        _               -> text "not"
 
--- Takes a Program, and returns a Maybe (Stepped s a) and the state after 
--- the first actor has been instantiated
 setupProgram :: T.Program -> (Maybe (I.Stepped I.IState ()), I.IState)
 setupProgram (T.Program bs inst) 
     = I.step firstStepped is

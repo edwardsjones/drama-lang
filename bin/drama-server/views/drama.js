@@ -12,21 +12,28 @@ $(function () {
     $(".start").on("click", function () {
         var progStr = $(".program").val();
         $.post(server + "/programs", progStr, function (data) {
-            console.log(data);
-            $(".step").attr("disabled", false);
-            $(".back").attr("disabled", true);
-            ticket = data;
-            all_states = [data.state];
-            update_display(option);
+            if (typeof data === "string") {
+                handle_error(data);
+            } else {
+                $(".step").attr("disabled", false);
+                $(".back").attr("disabled", true);
+                ticket = data;
+                all_states = [data.state];
+                update_display(option);
+            }
         });
     });
 
     $(".step").on("click", function () {
         if (ticket.state) {
             $.post(server + "/step", JSON.stringify(ticket), function (data) {
-                if (data === "done") {
-                    $(".step").attr("disabled", true);
-                    $(".back").attr("disabled", true);
+                if (typeof data === "string") {
+                    if (data === "done") {
+                        $(".step").attr("disabled", true);
+                        $(".back").attr("disabled", true);
+                    } else {
+                        handle_error(data);
+                    }
                 } else {
                     all_states.push(data.state);
                     ticket.state = data.state;
@@ -46,9 +53,13 @@ $(function () {
             all_states.pop();
             ticket.state = all_states[all_states.length - 1];
             $.post(server + "/back", JSON.stringify(ticket), function (data) {
-                ticket.state = data.state;
-                ticket.ready = data.ready;
-                update_display(option);
+                if (typeof data === "string") {
+                    handle_error(data);
+                } else {
+                    ticket.state = data.state;
+                    ticket.ready = data.ready;
+                    update_display(option);
+                }
             });
         }
     });
@@ -63,6 +74,26 @@ $(function () {
             update_display(option);
         }
     });
+
+    var handle_error = function (code) {
+        if (code === "blf") {
+            window.alert("Interpreter Error: BehaviourLookupFailed. You have tried to create an actor with a behaviour which doesn't exist!");
+        } else if (code === "alf") {
+            window.alert("Interpreter Error: ActorInstanceLookupFailed. You have addressed an actor which doesn't exist!");
+        } else if (code === "nlf") {
+            window.alert("Interpreter Error: NameLookupFailed. You have referenced a variable name which is undefined.");
+        } else if (code === "nmr") {
+            window.alert("Interpreter Error: NoMatchingReceives. A message has been received which cannot be dealt with.");
+        } else if (code === "dcf") {
+            window.alert("Interpreter Error: DecryptionFailed. You have used the wrong key to decrypt a value.");
+        } else if (code === "nbd") {
+            window.alert("Interpreter Error: NoBehavioursDefined. You can't run a program with no behaviours.");
+        } else if (code === "parse") {
+            window.alert("Parse Error: Check your syntax and try again.");
+        } else if (code === "not") {
+            window.alert("Error: Something's gone wrong -- please report this incident to ej1g13@soton.ac.uk.");
+        }
+    }
 
     var init_display = function (option) {
         if (option === "Overview") {
