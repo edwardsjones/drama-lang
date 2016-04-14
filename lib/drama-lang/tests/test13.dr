@@ -1,0 +1,9 @@
+behaviour name_fail () {
+    let x = 4 + na in
+        ()
+    receive
+        () -> ()
+    done
+}
+
+create name_fail ()

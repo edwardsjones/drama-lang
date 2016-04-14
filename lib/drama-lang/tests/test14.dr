@@ -1,0 +1,9 @@
+behaviour decryption_fail () {
+    let x = encrypt "string" "key" in
+        decrypt x "wrong key"
+    receive 
+        () -> ()
+    done
+}
+
+create decryption_fail ()

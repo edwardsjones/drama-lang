@@ -60,7 +60,7 @@ app = do
             dummy = I.IState { I._isGlobalEnv = dummyGenv, I._isCurrentAID = 0 }
         num <- liftIO $ (R.randomRIO (0,30000) :: IO Int)
         parseResult <- liftIO (try (let ast = P.parseDrama $ L.alexScanTokens progStr
-                               in  evaluate ast))
+                                    in  evaluate ast))
         case parseResult of 
             Left parseExc   ->  handleParseError parseExc
             Right ast       ->  do  setupResult <- liftIO (try (let (maybeSusp, is) = setupProgram ast
@@ -109,7 +109,6 @@ handler e = case e of
                 I.ActorLookupFailed      -> text "alf"
                 I.NameLookupFailed       -> text "nlf"
                 I.DecryptionFailed       -> text "dcf"
-                I.NoBehavioursDefined    -> text "nbd"
                 _                        -> text "not"
 
 handleParseError :: T.ParseError -> ActionT Text WebM ()

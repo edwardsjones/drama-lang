@@ -1,0 +1,8 @@
+behaviour blank () {
+    ()
+    receive 
+        () -> ()
+    done
+}
+
+create anything ()

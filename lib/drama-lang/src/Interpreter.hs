@@ -52,7 +52,6 @@ data InterpreterError
     | ActorLookupFailed
     | NameLookupFailed
     | DecryptionFailed
-    | NoBehavioursDefined
     deriving (Eq, Show) 
 
 instance Exception InterpreterError
@@ -430,7 +429,6 @@ matchMsg' (t : ts) (v : vs)
 
 -- Creates the initial GlobalEnv if provided with the list of behaviours
 initialEnv :: [Behaviour] -> GlobalEnv
-initialEnv [] = throw NoBehavioursDefined
 initialEnv bs
     = GlobalEnv
         { _geNextAvailableActor = 1

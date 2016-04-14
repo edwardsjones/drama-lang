@@ -165,6 +165,45 @@ test_encryption
             con = I._leConsole (I._aiEnv actor)
         assertEqual "pass" (head con) 
 
+test_behaviourLookupFail
+    = do 
+        progStr <- readFile "tests/test11.dr"
+        result <- try (let ast = P.parseDrama $ L.alexScanTokens progStr
+                           is = getEndState ast
+                       in  evaluate is) :: IO (Either I.InterpreterError I.IState)
+        assertLeft result
+
+test_actorLookupFail
+    = do 
+        progStr <- readFile "tests/test12.dr"
+        result <- try (let ast = P.parseDrama $ L.alexScanTokens progStr
+                           is = getEndState ast
+                       in  evaluate is) :: IO (Either I.InterpreterError I.IState)
+        assertLeft result
+
+test_nameLookupFail
+    = do
+        progStr <- readFile "tests/test13.dr"
+        result <- try (let ast = P.parseDrama $ L.alexScanTokens progStr
+                           is = getEndState ast
+                       in  evaluate is) :: IO (Either I.InterpreterError I.IState)
+        assertLeft result
+
+test_decryptionFail
+    = do
+        progStr <- readFile "tests/test14.dr"
+        result <- try (let ast = P.parseDrama $ L.alexScanTokens progStr
+                           is = getEndState ast
+                       in  evaluate is) :: IO (Either I.InterpreterError I.IState)
+        assertLeft result
+
+test_parseError
+    = do
+        let progStr = "randomGobbledegook"
+        result <- try (let ast = P.parseDrama $ L.alexScanTokens progStr
+                       in  evaluate ast) :: IO (Either T.ParseError T.Program)
+        assertLeft result
+
 getEndState :: T.Program -> I.IState
 getEndState (T.Program bs inst) 
     = let (_, is') = flip runState is $

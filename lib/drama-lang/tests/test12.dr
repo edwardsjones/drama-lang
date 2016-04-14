@@ -1,0 +1,8 @@
+behaviour send_fail () {
+    send 2 ("oh dear")
+    receive
+        () -> ()
+    done
+}
+
+create send_fail ()
