@@ -184,8 +184,6 @@ instance Monad (Stepped s) where
 
              -- If the SteppedResult is suspended, you don't have a value to 
              -- apply kamb to, so call bind again untill the base case is hit.
-             -- This needs to be in a thunk though (i.e. Suspended), in order
-             -- to stop execution. 
              -- (Suspended (sa >>= kamb), s') :: (SteppedResult s b, s')
                 (Suspended sa, s') -> (Suspended (sa >>= kamb), s')    
 
@@ -201,8 +199,9 @@ instance MonadState s (Stepped s) where
     put newState
         = Stepped $ \_ -> (Done (), newState)
 
--- In order for a Stateful monad to be a member of the Stepped monads, it must
--- implement defineStep.
+-- Make MonadStepped a subclass of MonadState
+-- All members of the MonadStepped typeclass must be stateful and implement
+-- the defineStep function
 class MonadState s m => MonadStepped s m where
     defineStep :: m a -> m a
 
